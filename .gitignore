@@ -1,0 +1,35 @@
+# Compiled output
+build/
+.gradle/
+out/
+*.class
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+local.properties
+.cxx/
+captures/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kotlin
+*.hprof
+
+# Native build
+.externalNativeBuild/
+
+# Gradle
+!gradle-wrapper.jar
+
+# Secrets (BYOK keys are stored at runtime in DataStore)
+**/secrets.properties

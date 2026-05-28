@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Exclude API keys / sensitive DataStore -->
+    <exclude domain="sharedpref" path="secrets.xml"/>
+    <exclude domain="file" path="datastore/secrets.preferences_pb"/>
+</full-backup-content>
