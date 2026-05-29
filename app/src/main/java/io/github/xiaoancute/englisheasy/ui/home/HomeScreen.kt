@@ -39,13 +39,24 @@ import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 @Composable
 fun HomeScreen(
     onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+    initialWord: String? = null,
+    onWordConsumed: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     var input by remember { mutableStateOf("") }
     val keyboard = LocalSoftwareKeyboardController.current
 
+    // 从历史页跳转过来时自动查询
+    if (initialWord != null && input != initialWord) {
+        input = initialWord
+        viewModel.lookup(initialWord)
+        onWordConsumed()
+    }
+
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text("英易 English Easy") },

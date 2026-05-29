@@ -40,6 +40,7 @@ import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val saved by viewModel.config.collectAsState()
@@ -57,6 +58,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text("设置") },

@@ -1,24 +1,77 @@
 package io.github.xiaoancute.englisheasy.ui
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import io.github.xiaoancute.englisheasy.ui.history.HistoryScreen
 import io.github.xiaoancute.englisheasy.ui.home.HomeScreen
 import io.github.xiaoancute.englisheasy.ui.settings.SettingsScreen
 
 /**
- * 顶层 Composable —— 在 Home 和 Settings 之间切换。
- * MVP 阶段两屏切换，不引入 Navigation Compose 依赖。
+ * 顶层 Composable —— 三屏切换（Home / History / Settings）+ 底部导航栏。
  */
 @Composable
 fun AppRoot() {
-    var showSettings by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    var pendingWordFromHistory by remember { mutableStateOf<String?>(null) }
 
-    if (showSettings) {
-        SettingsScreen(onBack = { showSettings = false })
-    } else {
-        HomeScreen(onOpenSettings = { showSettings = true })
+    // 历史页点击词条 → 跳转到 Home 并触发查询
+    if (pendingWordFromHistory != null) {
+        selectedTab = 0
     }
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                BottomNavItem.entries.forEachIndexed { index, item ->
+                    NavigationBarItem(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label) },
+                    )
+                }
+            }
+        },
+    ) { innerPadding ->
+        when (selectedTab) {
+            0 -> HomeScreen(
+                onOpenSettings = { selectedTab = 2 },
+                modifier = Modifier.padding(innerPadding),
+                initialWord = pendingWordFromHistory,
+                onWordConsumed = { pendingWordFromHistory = null },
+            )
+            1 -> HistoryScreen(
+                onWordClick = { word ->
+                    pendingWordFromHistory = word
+                },
+                modifier = Modifier.padding(innerPadding),
+            )
+            2 -> SettingsScreen(
+                onBack = { selectedTab = 0 },
+                modifier = Modifier.padding(innerPadding),
+            )
+        }
+    }
+}
+
+private enum class BottomNavItem(val label: String, val icon: ImageVector) {
+    HOME("查词", Icons.Default.Home),
+    HISTORY("历史", Icons.Default.History),
+    SETTINGS("设置", Icons.Default.Settings),
 }
