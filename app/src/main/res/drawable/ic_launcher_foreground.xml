@@ -3,7 +3,21 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- 背景圆 -->
+    <path
+        android:fillColor="#4A90E2"
+        android:pathData="M54,54m-50,0a50,50 0,1,1 100,0a50,50 0,1,1 -100,0"/>
+    <!-- 字母 E（简化几何形状，代表 English） -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,30L74,78L62,78L58,68L50,68L46,78L34,78L54,30Z M52,60L56,60L54,54Z"/>
+        android:pathData="M38,38 L68,38 L68,44 L44,44 L44,51 L64,51 L64,57 L44,57 L44,64 L68,64 L68,70 L38,70 Z"/>
+    <!-- 桥梁/连接线（从 E 延伸，象征"易"——让英文变容易） -->
+    <path
+        android:fillColor="#FFD700"
+        android:strokeWidth="3"
+        android:strokeColor="#FFD700"
+        android:pathData="M68,54 Q78,54 78,64"/>
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M76,62 L78,64 L80,62 Z"/>
 </vector>
