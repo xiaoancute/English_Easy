@@ -83,7 +83,7 @@ class HomeViewModel @Inject constructor(
         favoriteJob = viewModelScope.launch {
             repo.observeFavorite(word).collect { isFavorite ->
                 val current = _state.value as? HomeUiState.Success
-                if (current?.card?.word.equals(word, ignoreCase = true)) {
+                if (current != null && current.card.word.equals(word, ignoreCase = true)) {
                     _state.value = current.copy(isFavorite = isFavorite)
                 }
             }
@@ -95,7 +95,7 @@ class HomeViewModel @Inject constructor(
         noteJob = viewModelScope.launch {
             repo.observeNote(word).collect { userNote ->
                 val current = _state.value as? HomeUiState.Success
-                if (current?.card?.word.equals(word, ignoreCase = true)) {
+                if (current != null && current.card.word.equals(word, ignoreCase = true)) {
                     _state.value = current.copy(userNote = userNote)
                 }
             }
