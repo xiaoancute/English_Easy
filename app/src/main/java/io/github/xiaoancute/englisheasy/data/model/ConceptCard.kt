@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * 概念卡 schema —— 与 system_prompt_v2.md 输出一致。
+ * 概念卡 schema —— 与当前 System Prompt 输出一致。
  *
  * 三种形态：
  *  - 单核心多义：[branches] 为 null，[coreConcept]/[chineseApproximation]/[scenarios]/[misconceptions] 全填
@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ConceptCard(
     val word: String,
+    val entryType: EntryType = EntryType.WORD,
     val coreConcept: CoreConcept? = null,
     val chineseApproximation: String? = null,
     val scenarios: List<Scenario>? = null,
@@ -20,6 +21,13 @@ data class ConceptCard(
     val branches: List<Branch>? = null,
     val promptVersion: Int,
 )
+
+@Serializable
+enum class EntryType {
+    @SerialName("WORD") WORD,
+    @SerialName("FIXED_PHRASE") FIXED_PHRASE,
+    @SerialName("FREE_COMBINATION") FREE_COMBINATION,
+}
 
 @Serializable
 data class CoreConcept(

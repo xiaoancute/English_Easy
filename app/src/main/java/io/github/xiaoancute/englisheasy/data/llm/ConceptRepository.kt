@@ -4,9 +4,11 @@ import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
 import io.github.xiaoancute.englisheasy.data.prompt.CURRENT_PROMPT_VERSION
-import io.github.xiaoancute.englisheasy.data.prompt.SYSTEM_PROMPT_V2
+import io.github.xiaoancute.englisheasy.data.prompt.SYSTEM_PROMPT_V3
 import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
 import io.github.xiaoancute.englisheasy.data.settings.SettingsRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,13 +28,21 @@ class ConceptRepository @Inject constructor(
     private val dao: ConceptCardDao,
     private val json: Json,
 ) {
-    suspend fun lookup(word: String): Result<ConceptCard> = runCatching {
-        val normalized = word.lowercase().trim()
+    fun observeFavorite(word: String): Flow<Boolean> {
+        return dao.observeFavorite(normalizeEntry(word)).map { it == true }
+    }
+
+    fun observeNote(word: String): Flow<String> {
+        return dao.observeNote(normalizeEntry(word)).map { it.orEmpty() }
+    }
+
+    suspend fun lookup(word: String, forceRefresh: Boolean = false): Result<ConceptCard> = runCatching {
+        val normalized = normalizeEntry(word)
         require(normalized.isNotEmpty()) { "单词不能为空" }
 
         // 1. 查缓存
         val cached = dao.get(normalized)
-        if (cached != null && cached.promptVersion == CURRENT_PROMPT_VERSION) {
+        if (!forceRefresh && cached != null && cached.promptVersion == CURRENT_PROMPT_VERSION) {
             return@runCatching cached.toCard(json)
         }
 
@@ -42,16 +52,43 @@ class ConceptRepository @Inject constructor(
         val card = performLookup(normalized, cfg, retryHint = null)
 
         // 3. 存入缓存
-        dao.insert(ConceptCardEntity.fromCard(card, json))
+        dao.insert(
+            ConceptCardEntity.fromCard(
+                card = card,
+                json = json,
+                isFavorite = cached?.isFavorite == true,
+                userNote = cached?.userNote.orEmpty(),
+            )
+        )
         card
     }.recoverCatching { firstError ->
         // 4. 失败重试一次
-        val normalized = word.lowercase().trim()
+        val normalized = normalizeEntry(word)
         val cfg = settings.load()
         require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
+        val cached = dao.get(normalized)
         val card = performLookup(normalized, cfg, retryHint = firstError.message)
-        dao.insert(ConceptCardEntity.fromCard(card, json))
+        dao.insert(
+            ConceptCardEntity.fromCard(
+                card = card,
+                json = json,
+                isFavorite = cached?.isFavorite == true,
+                userNote = cached?.userNote.orEmpty(),
+            )
+        )
         card
+    }
+
+    suspend fun setFavorite(word: String, isFavorite: Boolean) {
+        val normalized = normalizeEntry(word)
+        require(normalized.isNotEmpty()) { "单词不能为空" }
+        dao.setFavorite(normalized, isFavorite)
+    }
+
+    suspend fun setNote(word: String, note: String) {
+        val normalized = normalizeEntry(word)
+        require(normalized.isNotEmpty()) { "单词不能为空" }
+        dao.setNote(normalized, note)
     }
 
     private suspend fun performLookup(
@@ -71,7 +108,7 @@ class ConceptRepository @Inject constructor(
             request = ChatRequest(
                 model = cfg.model,
                 messages = listOf(
-                    ChatMessage(role = "system", content = SYSTEM_PROMPT_V2),
+                    ChatMessage(role = "system", content = SYSTEM_PROMPT_V3),
                     ChatMessage(role = "user", content = userMessage),
                 ),
             ),
@@ -87,5 +124,9 @@ class ConceptRepository @Inject constructor(
     private fun extractJson(raw: String): String? {
         val match = Regex("""\{[\s\S]*\}""").find(raw) ?: return null
         return match.value
+    }
+
+    private fun normalizeEntry(value: String): String {
+        return value.trim().lowercase().replace(Regex("""\s+"""), " ")
     }
 }

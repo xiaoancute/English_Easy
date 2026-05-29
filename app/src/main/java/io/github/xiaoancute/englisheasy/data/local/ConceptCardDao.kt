@@ -17,9 +17,27 @@ interface ConceptCardDao {
     @Query("SELECT * FROM concept_cards ORDER BY queriedAt DESC")
     fun getAllByTimeDesc(): Flow<List<ConceptCardEntity>>
 
+    @Query("SELECT * FROM concept_cards WHERE isFavorite = 1 ORDER BY queriedAt DESC")
+    fun getFavoritesByTimeDesc(): Flow<List<ConceptCardEntity>>
+
+    @Query("SELECT isFavorite FROM concept_cards WHERE word = :word LIMIT 1")
+    fun observeFavorite(word: String): Flow<Boolean?>
+
+    @Query("SELECT userNote FROM concept_cards WHERE word = :word LIMIT 1")
+    fun observeNote(word: String): Flow<String?>
+
+    @Query("UPDATE concept_cards SET isFavorite = :isFavorite WHERE word = :word")
+    suspend fun setFavorite(word: String, isFavorite: Boolean)
+
+    @Query("UPDATE concept_cards SET userNote = :note WHERE word = :word")
+    suspend fun setNote(word: String, note: String)
+
     @Query("DELETE FROM concept_cards WHERE word = :word")
     suspend fun delete(word: String)
 
     @Query("DELETE FROM concept_cards")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM concept_cards WHERE isFavorite = 0")
+    suspend fun deleteAllNonFavorites()
 }

@@ -1,5 +1,9 @@
 package io.github.xiaoancute.englisheasy.ui.home
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -14,10 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -35,12 +37,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.model.toShareText
 import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +60,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
     var input by remember { mutableStateOf("") }
     val keyboard = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
 
     // 从历史页跳转过来时自动查询
     if (initialWord != null && input != initialWord) {
@@ -86,7 +92,7 @@ fun HomeScreen(
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
-                placeholder = { Text("输入英文单词，例：spring") },
+                placeholder = { Text("输入单词或短语，例：spring / break the ice") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(1f),
                 keyboardOptions = KeyboardOptions(
@@ -109,19 +115,69 @@ fun HomeScreen(
                 },
             )
 
-            ResultArea(state = state)
+            ResultArea(
+                state = state,
+                onFavoriteChange = viewModel::setFavorite,
+                onNoteChange = viewModel::setNote,
+                onRefresh = viewModel::refreshCurrent,
+                onShare = { card, note -> shareCard(context, card, note) },
+                onCopy = { card, note -> copyCard(context, card, note) },
+            )
         }
     }
 }
 
 @Composable
-private fun ResultArea(state: HomeUiState) {
+private fun ResultArea(
+    state: HomeUiState,
+    onFavoriteChange: (Boolean) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onShare: (ConceptCard, String) -> Unit,
+    onCopy: (ConceptCard, String) -> Unit,
+) {
     when (state) {
         HomeUiState.Idle -> IdleHint()
         HomeUiState.Loading -> LoadingIndicator()
-        is HomeUiState.Success -> ConceptCardView(card = state.card)
+        is HomeUiState.Success -> ConceptCardView(
+            card = state.card,
+            isFavorite = state.isFavorite,
+            onFavoriteChange = onFavoriteChange,
+            onShareClick = { onShare(state.card, state.userNote) },
+            onCopyClick = { onCopy(state.card, state.userNote) },
+            onRefreshClick = onRefresh,
+            userNote = state.userNote,
+            onNoteChange = onNoteChange,
+        )
         is HomeUiState.Error -> ErrorView(message = state.message)
     }
+}
+
+private fun shareCard(
+    context: android.content.Context,
+    card: ConceptCard,
+    userNote: String,
+) {
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "英易概念卡：${card.word}")
+        putExtra(Intent.EXTRA_TEXT, card.toShareText(userNote))
+    }
+    context.startActivity(
+        Intent.createChooser(sendIntent, "分享概念卡")
+    )
+}
+
+private fun copyCard(
+    context: android.content.Context,
+    card: ConceptCard,
+    userNote: String,
+) {
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    clipboard.setPrimaryClip(
+        ClipData.newPlainText("英易概念卡：${card.word}", card.toShareText(userNote))
+    )
+    Toast.makeText(context, "已复制概念卡", Toast.LENGTH_SHORT).show()
 }
 
 @Composable
