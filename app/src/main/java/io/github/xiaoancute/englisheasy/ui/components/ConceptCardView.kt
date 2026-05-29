@@ -1,9 +1,11 @@
 package io.github.xiaoancute.englisheasy.ui.components
 
 import android.speech.tts.TextToSpeech
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,7 +21,6 @@ import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,13 +34,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.xiaoancute.englisheasy.data.model.Branch
 import io.github.xiaoancute.englisheasy.data.model.BranchType
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.model.CoreConcept
 import io.github.xiaoancute.englisheasy.data.model.EntryType
+import io.github.xiaoancute.englisheasy.data.model.Misconception
+import io.github.xiaoancute.englisheasy.data.model.Scenario
 import java.util.Locale
 
 @Composable
@@ -76,6 +81,12 @@ fun ConceptCardView(
         }
     }
 
+    // 换词时整卡淡入 + 轻微上移
+    val enterAnim = remember(card.word) { Animatable(0f) }
+    LaunchedEffect(card.word) {
+        enterAnim.animateTo(1f, animationSpec = tween(durationMillis = 300))
+    }
+
     val contentModifier = if (scrollable) {
         modifier
             .fillMaxWidth(1f)
@@ -88,7 +99,10 @@ fun ConceptCardView(
     }
 
     Column(
-        modifier = contentModifier,
+        modifier = contentModifier.graphicsLayer {
+            alpha = enterAnim.value
+            translationY = (1f - enterAnim.value) * 24f
+        },
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         WordHeader(
@@ -210,77 +224,169 @@ private fun SingleCardBody(
     onSpeak: (String) -> Unit,
 ) {
     card.coreConcept?.let { core ->
-        Section(title = "核心概念") {
-            Text(
-                text = core.picture,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = "锚词：${core.anchorWord}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
-        }
+        CoreConceptBlock(core)
     }
 
     card.chineseApproximation?.let { approx ->
         Section(title = "中文逼近") {
             Text(
                 text = approx,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
             )
         }
     }
 
     card.scenarios?.takeIf { it.isNotEmpty() }?.let { scenarios ->
         Section(title = "典型场景") {
-            scenarios.forEach { sc ->
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(1f),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = sc.englishExample,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(onClick = { onSpeak(sc.englishExample) }) {
-                            Icon(
-                                imageVector = Icons.Default.VolumeUp,
-                                contentDescription = "朗读例句",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    Text(
-                        text = sc.pictureExplanation,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                    )
-                }
-            }
+            scenarios.forEach { sc -> ScenarioItem(sc, onSpeak) }
         }
     }
 
     card.misconceptions?.takeIf { it.isNotEmpty() }?.let { miscons ->
-        Section(title = "错误直觉（过渡拐杖）") {
-            miscons.forEach { mc ->
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "❌ ${mc.wrong}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    Text(
-                        text = "✅ ${mc.correct}",
-                        style = MaterialTheme.typography.bodyMedium,
+        Section(title = "错误直觉 · 过渡拐杖") {
+            miscons.forEach { mc -> MisconceptionItem(mc) }
+        }
+    }
+}
+
+/** 核心概念：卡片的灵魂，用淡绿底块突出，画面用衬线大字，锚词做成 chip。 */
+@Composable
+private fun CoreConceptBlock(core: CoreConcept) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(1f),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "核心概念",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+            )
+            Text(
+                text = core.picture,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "锚词",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+                AnchorChip(core.anchorWord)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnchorChip(word: String) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Text(
+            text = word,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+        )
+    }
+}
+
+/** 单个场景：例句 + 朗读，画面解释另起一行，整体框成一张轻卡。 */
+@Composable
+private fun ScenarioItem(sc: Scenario, onSpeak: (String) -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(1f),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(1f),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = sc.englishExample,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = { onSpeak(sc.englishExample) }) {
+                    Icon(
+                        imageVector = Icons.Default.VolumeUp,
+                        contentDescription = "朗读例句",
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
+            Text(
+                text = sc.pictureExplanation,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+    }
+}
+
+/** 错误直觉：用「误 / 对」色标 + 淡色底，替代裸 emoji，层级更清楚。 */
+@Composable
+private fun MisconceptionItem(mc: Misconception) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        TaggedLine(
+            tag = "误",
+            text = mc.wrong,
+            tagBg = MaterialTheme.colorScheme.errorContainer,
+            tagFg = MaterialTheme.colorScheme.onErrorContainer,
+        )
+        TaggedLine(
+            tag = "对",
+            text = mc.correct,
+            tagBg = MaterialTheme.colorScheme.primaryContainer,
+            tagFg = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    }
+}
+
+@Composable
+private fun TaggedLine(
+    tag: String,
+    text: String,
+    tagBg: androidx.compose.ui.graphics.Color,
+    tagFg: androidx.compose.ui.graphics.Color,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(1f),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Surface(shape = RoundedCornerShape(6.dp), color = tagBg) {
+            Text(
+                text = tag,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = tagFg,
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            )
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -356,24 +462,12 @@ private fun TextToSpeech.speakExample(
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(1f),
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Column(
-                modifier = Modifier.padding(PaddingValues(top = 4.dp)),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                content()
-            }
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        content()
     }
 }
