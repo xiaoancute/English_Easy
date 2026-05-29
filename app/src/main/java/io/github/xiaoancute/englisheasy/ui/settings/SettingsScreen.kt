@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
+import io.github.xiaoancute.englisheasy.ui.about.AboutScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +51,12 @@ fun SettingsScreen(
     var baseUrl by remember { mutableStateOf(saved.baseUrl) }
     var model by remember { mutableStateOf(saved.model) }
     var keyVisible by remember { mutableStateOf(false) }
+    var showAbout by remember { mutableStateOf(false) }
+
+    if (showAbout) {
+        AboutScreen(onBack = { showAbout = false }, modifier = modifier)
+        return
+    }
 
     // saved 异步加载完成后，回填到本地表单
     LaunchedEffect(saved) {
@@ -145,6 +153,13 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(1f),
             ) {
                 Text("保存")
+            }
+
+            TextButton(
+                onClick = { showAbout = true },
+                modifier = Modifier.fillMaxWidth(1f),
+            ) {
+                Text("关于英易 · 隐私说明")
             }
         }
     }

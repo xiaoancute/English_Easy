@@ -20,6 +20,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -58,6 +61,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    val isConfigured by viewModel.isConfigured.collectAsState()
     var input by remember { mutableStateOf("") }
     val keyboard = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
@@ -117,6 +121,8 @@ fun HomeScreen(
 
             ResultArea(
                 state = state,
+                isConfigured = isConfigured,
+                onOpenSettings = onOpenSettings,
                 onFavoriteChange = viewModel::setFavorite,
                 onNoteChange = viewModel::setNote,
                 onRefresh = viewModel::refreshCurrent,
@@ -130,6 +136,8 @@ fun HomeScreen(
 @Composable
 private fun ResultArea(
     state: HomeUiState,
+    isConfigured: Boolean,
+    onOpenSettings: () -> Unit,
     onFavoriteChange: (Boolean) -> Unit,
     onNoteChange: (String) -> Unit,
     onRefresh: () -> Unit,
@@ -137,7 +145,7 @@ private fun ResultArea(
     onCopy: (ConceptCard, String) -> Unit,
 ) {
     when (state) {
-        HomeUiState.Idle -> IdleHint()
+        HomeUiState.Idle -> if (isConfigured) IdleHint() else SetupGuide(onOpenSettings)
         HomeUiState.Loading -> LoadingIndicator()
         is HomeUiState.Success -> ConceptCardView(
             card = state.card,
@@ -191,6 +199,52 @@ private fun IdleHint() {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
         )
+    }
+}
+
+@Composable
+private fun SetupGuide(onOpenSettings: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "先连上你的 AI",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = "英易本身不含 AI，需要你填入自己的大模型 API Key（BYOK）。" +
+                        "Key 会用系统加密后只存在本机，查词请求直接发往你配置的端点。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                )
+                Text(
+                    text = "支持 OpenAI / DeepSeek / Moonshot / 智谱 / Groq / 本地 Ollama 等任意 OpenAI 兼容端点。" +
+                        "在对应平台官网注册即可获取 Key。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                )
+                Button(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.fillMaxWidth(1f),
+                ) {
+                    Text("去设置")
+                }
+            }
+        }
     }
 }
 
