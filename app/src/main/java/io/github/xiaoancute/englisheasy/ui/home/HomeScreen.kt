@@ -166,7 +166,6 @@ private fun LoadingIndicator() {
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha * 0.7f),
             )
         }
-        }
     }
 }
 
