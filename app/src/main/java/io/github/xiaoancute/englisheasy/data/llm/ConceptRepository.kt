@@ -1,6 +1,9 @@
 package io.github.xiaoancute.englisheasy.data.llm
 
+import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
+import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.prompt.CURRENT_PROMPT_VERSION
 import io.github.xiaoancute.englisheasy.data.prompt.SYSTEM_PROMPT_V2
 import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
 import io.github.xiaoancute.englisheasy.data.settings.SettingsRepository
@@ -9,27 +12,46 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 编排 LLM 调用流程：
- *  1. 拉取用户配置（API key / base URL / model）
- *  2. 发送 system + user 消息
- *  3. 从响应里提取 JSON（容错正则）
- *  4. 反序列化为 ConceptCard
+ * 编排 LLM 调用流程 + Room 缓存：
+ *  1. 查本地缓存（word 主键，promptVersion 匹配 CURRENT_PROMPT_VERSION）
+ *  2. 缓存命中且版本匹配 → 直接返回
+ *  3. 缓存未命中或版本过期 → 调用 LLM
+ *  4. LLM 响应成功 → 存入缓存并返回
  *  5. 失败时自动重试一次（把错误信息回灌给 LLM）
  */
 @Singleton
 class ConceptRepository @Inject constructor(
     private val api: OpenAiCompatibleApi,
     private val settings: SettingsRepository,
+    private val dao: ConceptCardDao,
     private val json: Json,
 ) {
     suspend fun lookup(word: String): Result<ConceptCard> = runCatching {
+        val normalized = word.lowercase().trim()
+        require(normalized.isNotEmpty()) { "单词不能为空" }
+
+        // 1. 查缓存
+        val cached = dao.get(normalized)
+        if (cached != null && cached.promptVersion == CURRENT_PROMPT_VERSION) {
+            return@runCatching cached.toCard(json)
+        }
+
+        // 2. 缓存未命中或版本过期 → 调用 LLM
         val cfg = settings.load()
         require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
-        performLookup(word.trim(), cfg, retryHint = null)
+        val card = performLookup(normalized, cfg, retryHint = null)
+
+        // 3. 存入缓存
+        dao.insert(ConceptCardEntity.fromCard(card, json))
+        card
     }.recoverCatching { firstError ->
+        // 4. 失败重试一次
+        val normalized = word.lowercase().trim()
         val cfg = settings.load()
         require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
-        performLookup(word.trim(), cfg, retryHint = firstError.message)
+        val card = performLookup(normalized, cfg, retryHint = firstError.message)
+        dao.insert(ConceptCardEntity.fromCard(card, json))
+        card
     }
 
     private suspend fun performLookup(
