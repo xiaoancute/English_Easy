@@ -33,3 +33,6 @@ Thumbs.db
 
 # Secrets (BYOK keys are stored at runtime in DataStore)
 **/secrets.properties
+
+# Project planning documents (local only)
+项目计划书.md
