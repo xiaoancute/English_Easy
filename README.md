@@ -158,18 +158,8 @@ app/src/main/java/io/github/xiaoancute/englisheasy/
 ---
 
 ## 🙏 致谢
-
-- **AI 模型**：感谢 OpenAI / DeepSeek / Moonshot 等提供的 API 服务
-- **设计灵感**：受 [Anki](https://apps.ankiweb.net/) 和 [Obsidian](https://obsidian.md/) 的概念连接思想启发
-- **技术栈**：基于 [Jetpack Compose](https://developer.android.com/jetpack/compose) 和 [Hilt](https://dagger.dev/hilt/) 构建
-
----
-
-## 📮 联系方式
-
-- **GitHub Issues**：[提交问题](https://github.com/xiaoancute/English_Easy/issues)
-- **项目主页**：https://github.com/xiaoancute/English_Easy
-
----
+- **设计灵感**：受 [苹果香蕉--](https://space.bilibili.com/440513906/) B站up主的视频启发
+- [学习语言容易陷入的误区 | 如何高效学习英语？真正的语言学习应该是怎样的？
+](https://www.bilibili.com/video/BV1s6oLB8ESh/)
 
 **让英文学习回归概念本质，而非死记硬背。**
