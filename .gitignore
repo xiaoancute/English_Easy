@@ -36,3 +36,8 @@ Thumbs.db
 
 # Project planning documents (local only)
 项目计划书.md
+
+# Internal design documents (local only)
+prompt_changelog.md
+system_prompt_v1.md
+system_prompt_v2.md
