@@ -1,7 +1,9 @@
 package io.github.xiaoancute.englisheasy.data.settings
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -19,6 +21,8 @@ private object Keys {
     val API_KEY_ENC = stringPreferencesKey("api_key_enc")     // 加密后的 key
     val BASE_URL = stringPreferencesKey("base_url")
     val MODEL = stringPreferencesKey("model")
+    val THEME_COLOR = intPreferencesKey("theme_color")        // 主题色（ARGB int）
+    val USE_DYNAMIC_COLOR = booleanPreferencesKey("use_dynamic_color")  // 是否跟随系统
 }
 
 @Singleton
@@ -38,7 +42,16 @@ class SettingsRepository @Inject constructor(
         )
     }
 
+    val themeConfigFlow: Flow<ThemeConfig> = context.dataStore.data.map { prefs ->
+        ThemeConfig(
+            themeColor = prefs[Keys.THEME_COLOR] ?: ThemeConfig.DEFAULT.themeColor,
+            useDynamicColor = prefs[Keys.USE_DYNAMIC_COLOR] ?: ThemeConfig.DEFAULT.useDynamicColor,
+        )
+    }
+
     suspend fun load(): ProviderConfig = configFlow.first()
+
+    suspend fun loadTheme(): ThemeConfig = themeConfigFlow.first()
 
     suspend fun save(cfg: ProviderConfig) {
         context.dataStore.edit { prefs ->
@@ -46,6 +59,13 @@ class SettingsRepository @Inject constructor(
             prefs.remove(Keys.API_KEY_LEGACY)            // 清除可能残留的明文
             prefs[Keys.BASE_URL] = cfg.baseUrl
             prefs[Keys.MODEL] = cfg.model
+        }
+    }
+
+    suspend fun saveTheme(theme: ThemeConfig) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.THEME_COLOR] = theme.themeColor
+            prefs[Keys.USE_DYNAMIC_COLOR] = theme.useDynamicColor
         }
     }
 }
