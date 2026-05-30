@@ -1,8 +1,10 @@
 package io.github.xiaoancute.englisheasy.data.settings
 
 import android.content.Context
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -14,7 +16,12 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.dataStore by preferencesDataStore(name = "secrets")
+private val Context.dataStore by preferencesDataStore(
+    name = "secrets",
+    corruptionHandler = ReplaceFileCorruptionHandler {
+        emptyPreferences()
+    },
+)
 
 private object Keys {
     val API_KEY_LEGACY = stringPreferencesKey("api_key")      // 旧明文，仅用于迁移读取
