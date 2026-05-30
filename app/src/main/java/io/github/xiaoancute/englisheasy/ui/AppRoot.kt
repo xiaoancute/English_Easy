@@ -2,10 +2,9 @@ package io.github.xiaoancute.englisheasy.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -20,15 +19,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import io.github.xiaoancute.englisheasy.ui.compare.CompareScreen
 import io.github.xiaoancute.englisheasy.ui.history.FavoritesScreen
 import io.github.xiaoancute.englisheasy.ui.history.HistoryScreen
 import io.github.xiaoancute.englisheasy.ui.home.HomeScreen
 import io.github.xiaoancute.englisheasy.ui.settings.SettingsScreen
-import io.github.xiaoancute.englisheasy.ui.stats.StatsScreen
 
 /**
- * 顶层 Composable —— 查词 / 历史 / 收藏 / 统计 / 对比 + 设置入口。
+ * 顶层 Composable —— 查词 / 历史 / 收藏 / 设置。
  */
 @Composable
 fun AppRoot() {
@@ -47,7 +44,7 @@ fun AppRoot() {
                     NavigationBarItem(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        icon = { Icon(item.icon, contentDescription = null) },
                         label = { Text(item.label) },
                     )
                 }
@@ -56,7 +53,6 @@ fun AppRoot() {
     ) { innerPadding ->
         when (selectedTab) {
             0 -> HomeScreen(
-                onOpenSettings = { selectedTab = 5 },
                 modifier = Modifier.padding(innerPadding),
                 initialWord = pendingWordFromHistory,
                 onWordConsumed = { pendingWordFromHistory = null },
@@ -73,14 +69,7 @@ fun AppRoot() {
                 },
                 modifier = Modifier.padding(innerPadding),
             )
-            3 -> StatsScreen(
-                modifier = Modifier.padding(innerPadding),
-            )
-            4 -> CompareScreen(
-                modifier = Modifier.padding(innerPadding),
-            )
-            5 -> SettingsScreen(
-                onBack = { selectedTab = 0 },
+            3 -> SettingsScreen(
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -91,6 +80,5 @@ private enum class BottomNavItem(val label: String, val icon: ImageVector) {
     HOME("查词", Icons.Default.Home),
     HISTORY("历史", Icons.Default.History),
     FAVORITES("收藏", Icons.Default.Star),
-    STATS("统计", Icons.Default.BarChart),
-    COMPARE("对比", Icons.Default.CompareArrows),
+    SETTINGS("设置", Icons.Default.Settings),
 }

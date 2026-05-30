@@ -146,74 +146,76 @@ private fun WordHeader(
     onCopyClick: (() -> Unit)?,
     onRefreshClick: (() -> Unit)?,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = word,
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth(1f),
+        )
         Row(
             modifier = Modifier.fillMaxWidth(1f),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = word,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f),
-            )
-            if (onShareClick != null) {
-                IconButton(onClick = onShareClick) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "分享",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Text(
+                    text = when (entryType) {
+                        EntryType.WORD -> "单词"
+                        EntryType.FIXED_PHRASE -> "固定短语"
+                        EntryType.FREE_COMBINATION -> "普通词组"
+                    },
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onShareClick != null) {
+                    IconButton(onClick = onShareClick) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "分享",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (onCopyClick != null) {
+                    IconButton(onClick = onCopyClick) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "复制",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (onRefreshClick != null) {
+                    IconButton(onClick = onRefreshClick) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "重新生成",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (onFavoriteChange != null) {
+                    IconButton(onClick = { onFavoriteChange(!isFavorite) }) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = if (isFavorite) "取消收藏" else "收藏",
+                            tint = if (isFavorite) {
+                                MaterialTheme.colorScheme.tertiary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
                 }
             }
-            if (onCopyClick != null) {
-                IconButton(onClick = onCopyClick) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "复制",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            if (onRefreshClick != null) {
-                IconButton(onClick = onRefreshClick) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "重新生成",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            if (onFavoriteChange != null) {
-                IconButton(onClick = { onFavoriteChange(!isFavorite) }) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = if (isFavorite) "取消收藏" else "收藏",
-                        tint = if (isFavorite) {
-                            MaterialTheme.colorScheme.tertiary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
-            }
-        }
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.secondaryContainer,
-        ) {
-            Text(
-                text = when (entryType) {
-                    EntryType.WORD -> "单词"
-                    EntryType.FIXED_PHRASE -> "固定短语"
-                    EntryType.FREE_COMBINATION -> "普通词组"
-                },
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
         }
     }
 }

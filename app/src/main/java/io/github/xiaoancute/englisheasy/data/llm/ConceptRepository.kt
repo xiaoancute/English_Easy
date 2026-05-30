@@ -38,7 +38,7 @@ class ConceptRepository @Inject constructor(
 
     suspend fun lookup(word: String, forceRefresh: Boolean = false): Result<ConceptCard> = runCatching {
         val normalized = normalizeEntry(word)
-        require(normalized.isNotEmpty()) { "单词不能为空" }
+        require(normalized.isNotEmpty()) { "词或短语不能为空" }
 
         // 1. 查缓存
         val cached = dao.get(normalized)
@@ -81,13 +81,13 @@ class ConceptRepository @Inject constructor(
 
     suspend fun setFavorite(word: String, isFavorite: Boolean) {
         val normalized = normalizeEntry(word)
-        require(normalized.isNotEmpty()) { "单词不能为空" }
+        require(normalized.isNotEmpty()) { "词或短语不能为空" }
         dao.setFavorite(normalized, isFavorite)
     }
 
     suspend fun setNote(word: String, note: String) {
         val normalized = normalizeEntry(word)
-        require(normalized.isNotEmpty()) { "单词不能为空" }
+        require(normalized.isNotEmpty()) { "词或短语不能为空" }
         dao.setNote(normalized, note)
     }
 
@@ -97,7 +97,7 @@ class ConceptRepository @Inject constructor(
         retryHint: String?,
     ): ConceptCard {
         val userMessage = if (retryHint != null) {
-            "上次响应解析失败：$retryHint\n请只输出合法 JSON，不要任何 Markdown 包裹或前后说明。\n\n查询单词：$word"
+            "上次响应解析失败：$retryHint\n请只输出合法 JSON，不要任何 Markdown 包裹或前后说明。\n\n查询词或短语：$word"
         } else {
             word
         }

@@ -19,8 +19,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,7 +52,6 @@ import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     initialWord: String? = null,
     onWordConsumed: () -> Unit = {},
@@ -78,11 +75,6 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = { Text("英易 English Easy") },
-                actions = {
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
-                    }
-                },
             )
         },
     ) { innerPadding ->
@@ -122,7 +114,6 @@ fun HomeScreen(
             ResultArea(
                 state = state,
                 isConfigured = isConfigured,
-                onOpenSettings = onOpenSettings,
                 onFavoriteChange = viewModel::setFavorite,
                 onNoteChange = viewModel::setNote,
                 onRefresh = viewModel::refreshCurrent,
@@ -137,7 +128,6 @@ fun HomeScreen(
 private fun ResultArea(
     state: HomeUiState,
     isConfigured: Boolean,
-    onOpenSettings: () -> Unit,
     onFavoriteChange: (Boolean) -> Unit,
     onNoteChange: (String) -> Unit,
     onRefresh: () -> Unit,
@@ -145,7 +135,7 @@ private fun ResultArea(
     onCopy: (ConceptCard, String) -> Unit,
 ) {
     when (state) {
-        HomeUiState.Idle -> if (isConfigured) IdleHint() else SetupGuide(onOpenSettings)
+        HomeUiState.Idle -> if (isConfigured) IdleHint() else SetupGuide()
         HomeUiState.Loading -> LoadingIndicator()
         is HomeUiState.Success -> ConceptCardView(
             card = state.card,
@@ -203,7 +193,7 @@ private fun IdleHint() {
 }
 
 @Composable
-private fun SetupGuide(onOpenSettings: () -> Unit) {
+private fun SetupGuide() {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -237,12 +227,12 @@ private fun SetupGuide(onOpenSettings: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                 )
-                Button(
-                    onClick = onOpenSettings,
-                    modifier = Modifier.fillMaxWidth(1f),
-                ) {
-                    Text("去设置")
-                }
+                Text(
+                    text = "👉 点击底部「设置」tab 填入配置",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
@@ -282,7 +272,7 @@ private fun LoadingIndicator() {
 @Composable
 private fun ErrorView(message: String) {
     val (title, hint) = when {
-        message.contains("请先在设置里填入") -> "未配置 API" to "点击右上角设置按钮，填入你的 API Key"
+        message.contains("请先在设置里填入") -> "未配置 API" to "点击底部「设置」tab，填入你的 API Key"
         message.contains("401") || message.contains("Unauthorized") -> "API Key 无效" to "请检查设置里的 API Key 是否正确"
         message.contains("timeout") || message.contains("Unable to resolve host") -> "网络连接失败" to "请检查网络连接或 Base URL 是否正确"
         message.contains("JSON") || message.contains("响应") -> "解析失败" to "LLM 响应格式异常，请稍后重试"

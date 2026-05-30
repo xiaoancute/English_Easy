@@ -46,3 +46,12 @@ system_prompt_v1.md
 system_prompt_v2.md
 system_prompt_v3.md
 paper_mvp.md
+
+# Generated Paper MVP run artifacts
+paper_runs/
+
+# Local Paper MVP API config
+paper_mvp.env
+
+# Python cache
+__pycache__/

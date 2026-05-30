@@ -9,7 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -41,7 +40,6 @@ import io.github.xiaoancute.englisheasy.ui.about.AboutScreen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -70,11 +68,6 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("设置") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
             )
         },
     ) { innerPadding ->
@@ -148,7 +141,6 @@ fun SettingsScreen(
                             model = model.trim(),
                         )
                     )
-                    onBack()
                 },
                 modifier = Modifier.fillMaxWidth(1f),
             ) {

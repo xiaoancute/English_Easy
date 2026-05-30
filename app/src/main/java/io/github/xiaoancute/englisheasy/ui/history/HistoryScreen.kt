@@ -172,20 +172,21 @@ private fun HistoryItem(
     onFavoriteChange: (Boolean) -> Unit,
     onCopy: () -> Unit,
 ) {
+    val hasBadges = entity.userNote.isNotBlank() || entity.promptVersion < CURRENT_PROMPT_VERSION
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = entity.word,
                     style = MaterialTheme.typography.titleMedium,
@@ -196,45 +197,55 @@ private fun HistoryItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 )
-                if (entity.userNote.isNotBlank()) {
-                    InlineBadge(
-                        icon = Icons.Default.EditNote,
-                        text = "有笔记",
-                        contentDescription = "有笔记",
+                if (hasBadges) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (entity.userNote.isNotBlank()) {
+                            InlineBadge(
+                                icon = Icons.Default.EditNote,
+                                text = "有笔记",
+                                contentDescription = "有笔记",
+                            )
+                        }
+                        if (entity.promptVersion < CURRENT_PROMPT_VERSION) {
+                            InlineBadge(
+                                icon = Icons.Default.Update,
+                                text = "可更新",
+                                contentDescription = "概念可更新",
+                            )
+                        }
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = { onFavoriteChange(!entity.isFavorite) }) {
+                    Icon(
+                        imageVector = if (entity.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (entity.isFavorite) "取消收藏" else "收藏",
+                        tint = if (entity.isFavorite) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     )
                 }
-                if (entity.promptVersion < CURRENT_PROMPT_VERSION) {
-                    InlineBadge(
-                        icon = Icons.Default.Update,
-                        text = "可更新",
-                        contentDescription = "概念可更新",
+                IconButton(onClick = onCopy) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "复制",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            }
-            IconButton(onClick = { onFavoriteChange(!entity.isFavorite) }) {
-                Icon(
-                    imageVector = if (entity.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                    contentDescription = if (entity.isFavorite) "取消收藏" else "收藏",
-                    tint = if (entity.isFavorite) {
-                        MaterialTheme.colorScheme.tertiary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
-            IconButton(onClick = onCopy) {
-                Icon(
-                    imageVector = Icons.Default.ContentCopy,
-                    contentDescription = "复制",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error,
-                )
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
     }

@@ -1,6 +1,6 @@
 # 英易 English Easy
 
-> **概念还原器**：用 AI 把英文单词在母语者大脑里的样子，重新呈现给中文学习者
+> **概念还原器**：用 AI 把英文词和短语在母语者大脑里的样子，重新呈现给中文学习者
 
 [![Build](https://github.com/xiaoancute/English_Easy/actions/workflows/build.yml/badge.svg)](https://github.com/xiaoancute/English_Easy/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -23,7 +23,7 @@
 
 ## ✨ 功能特性
 
-- **🔍 智能查询**：输入单词 → AI 生成概念卡片（支持单核心 / 同形异义词 / 语义簇分化）
+- **🔍 智能查询**：输入单词或短语 → AI 生成概念卡片（支持单核心 / 同形异义词 / 语义簇分化 / 固定短语 / 普通词组）
 - **💾 本地缓存**：Room 数据库 + prompt 版本管理，相同词秒开，prompt 升级自动重新生成
 - **📚 历史记录**：按时间倒序展示查询过的词，点击即可重新查看
 - **⚙️ BYOK（Bring Your Own Key）**：所有 API Key 仅保存在设备本地，支持任意 OpenAI 兼容端点
@@ -60,7 +60,7 @@ cd English_Easy
 
 ### 2. 配置 API Key
 
-首次打开应用，点击右上角 **设置** 按钮，填入：
+首次打开应用，点击底部 **设置** tab，填入：
 
 | 字段 | 说明 | 示例 |
 |------|------|------|
@@ -80,7 +80,7 @@ cd English_Easy
 
 ### 3. 开始查询
 
-返回主页，输入任意英文单词（例如 `spring`），等待 AI 生成概念卡片。
+返回主页，输入任意英文单词或短语（例如 `spring` / `break the ice`），等待 AI 生成概念卡片。
 
 ---
 
@@ -110,13 +110,13 @@ app/src/main/java/io/github/xiaoancute/englisheasy/
 ├── EnglishEasyApp.kt                       Hilt Application
 ├── data/
 │   ├── model/ConceptCard.kt                概念卡片数据模型
-│   ├── prompt/SystemPrompt.kt              AI 系统提示词（v2）
+│   ├── prompt/SystemPrompt.kt              AI 系统提示词（v3）
 │   ├── settings/                           DataStore 配置存储
 │   ├── llm/                                Retrofit API + Repository
 │   └── local/                              Room 缓存层
 ├── di/                                     Hilt 依赖注入模块
 └── ui/
-    ├── AppRoot.kt                          三屏导航（Home / History / Settings）
+    ├── AppRoot.kt                          四屏导航（Home / History / Favorites / Settings）
     ├── home/                               查询主页
     ├── history/                            历史记录
     ├── settings/                           设置页
