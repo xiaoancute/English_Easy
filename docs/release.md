@@ -29,3 +29,25 @@ Copy the output into `RELEASE_KEYSTORE_BASE64`.
 4. On `v*` tags, GitHub Actions creates a GitHub Release with the release APK.
 
 If signing secrets are missing, CI still uploads an unsigned release APK artifact for testing, but that APK is not Play-ready.
+
+## RC test flow
+
+For a release candidate, use a pre-release style tag:
+
+```bash
+git tag v0.1.0-rc1
+git push origin v0.1.0-rc1
+```
+
+After the workflow finishes, download the APK from the generated GitHub Release and run the manual RC checklist:
+
+- First launch
+- Save Base URL / model / API Key
+- Query `spring`
+- Query `break the ice`
+- Query `red apple`
+- Favorite a card
+- Add a note
+- Copy a card
+- Regenerate a card
+- Restart the app and verify history, favorites, and notes are still present

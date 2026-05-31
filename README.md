@@ -26,8 +26,23 @@
 - **🔍 智能查询**：输入单词或短语 → AI 生成概念卡片（支持单核心 / 同形异义词 / 语义簇分化 / 固定短语 / 普通词组）
 - **💾 本地缓存**：Room 数据库 + prompt 版本管理，相同词秒开，prompt 升级自动重新生成
 - **📚 历史记录**：按时间倒序展示查询过的词，点击即可重新查看
+- **⭐ 收藏与笔记**：保存值得复看的概念卡，并给自己的理解补充备注
+- **📋 复制与分享**：把概念卡导出为文本，方便保存或发给别人
 - **⚙️ BYOK（Bring Your Own Key）**：所有 API Key 仅保存在设备本地，支持任意 OpenAI 兼容端点
 - **🎨 Material Design 3**：Compose UI + 自适应图标 + 深色模式友好
+
+---
+
+## ✅ 当前状态
+
+当前项目处于 **RC 前收口阶段**：
+
+- Android App 核心流程已经可用：查询、卡片、历史、收藏、笔记、复制、重新生成
+- Prompt 已升级到 v3，支持单词、固定短语、普通词组
+- GitHub Actions 会构建 debug APK 和 release APK
+- Release signing 已接入，但正式签名包需要仓库配置 signing secrets
+
+暂时不做：登录、推荐算法、SRS 复习、阅读器、社区、离线词典。
 
 ---
 
@@ -48,7 +63,12 @@
 
 ### 1. 下载 APK
 
-从 [GitHub Actions Artifacts](https://github.com/xiaoancute/English_Easy/actions) 下载最新构建的 `app-debug.apk`（需登录 GitHub）。
+优先从 [GitHub Releases](https://github.com/xiaoancute/English_Easy/releases) 下载正式发布的 APK。
+
+如果还没有正式 release，可以从 [GitHub Actions Artifacts](https://github.com/xiaoancute/English_Easy/actions) 下载最新构建：
+
+- `app-debug`：调试包，适合快速试用
+- `app-release`：release 构建；如果没有配置签名 secrets，则是 unsigned APK，只适合测试
 
 或克隆仓库自行构建：
 ```bash
@@ -81,6 +101,19 @@ cd English_Easy
 ### 3. 开始查询
 
 返回主页，输入任意英文单词或短语（例如 `spring` / `break the ice`），等待 AI 生成概念卡片。
+
+---
+
+## 🔐 隐私与密钥
+
+英易采用 BYOK 模式，App 不内置共享密钥，也不需要自建后端。
+
+- API Key 只保存在设备本地
+- 设置数据通过 Android 本地安全能力加密保存
+- 查词请求直接发送到你配置的 Base URL
+- 历史、收藏、笔记保存在本机 Room 数据库
+
+请不要把自己的 API Key 提交到仓库、Issue、截图或日志里。
 
 ---
 
@@ -131,6 +164,25 @@ app/src/main/java/io/github/xiaoancute/englisheasy/
 - **缓存命中**：promptVersion 匹配 `CURRENT_PROMPT_VERSION` → 直接返回
 - **缓存未命中或版本过期**：调用 LLM → 存入缓存
 - **Prompt 升级**：修改 `CURRENT_PROMPT_VERSION` 常量，旧缓存自动失效
+
+---
+
+## 🚢 发布流程
+
+Release 构建通过 GitHub Actions 完成。详细步骤见 [docs/release.md](docs/release.md)。
+
+最短流程：
+
+1. 配置 release signing secrets。
+2. 配置 GitHub repository variable：`VERSION_CODE`。
+3. 推送 tag，例如：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+CI 会运行单元测试、debug 构建、release 构建，并在 `v*` tag 上创建 GitHub Release。
 
 ---
 
