@@ -9,7 +9,10 @@ import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
 import io.github.xiaoancute.englisheasy.data.settings.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import retrofit2.HttpException
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,7 +52,7 @@ class ConceptRepository @Inject constructor(
         // 2. 缓存未命中或版本过期 → 调用 LLM
         val cfg = settings.load()
         require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
-        val card = performLookup(normalized, cfg, retryHint = null)
+        val card = lookupWithJsonRetry(normalized, cfg)
 
         // 3. 存入缓存
         dao.insert(
@@ -61,22 +64,8 @@ class ConceptRepository @Inject constructor(
             )
         )
         card
-    }.recoverCatching { firstError ->
-        // 4. 失败重试一次
-        val normalized = normalizeEntry(word)
-        val cfg = settings.load()
-        require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
-        val cached = dao.get(normalized)
-        val card = performLookup(normalized, cfg, retryHint = firstError.message)
-        dao.insert(
-            ConceptCardEntity.fromCard(
-                card = card,
-                json = json,
-                isFavorite = cached?.isFavorite == true,
-                userNote = cached?.userNote.orEmpty(),
-            )
-        )
-        card
+    }.recoverCatching {
+        throw it.toUserFacingException()
     }
 
     suspend fun setFavorite(word: String, isFavorite: Boolean) {
@@ -115,9 +104,26 @@ class ConceptRepository @Inject constructor(
         )
 
         val raw = response.choices.firstOrNull()?.message?.content
-            ?: error("LLM 响应里没有 choices/message")
-        val cleanJson = extractJson(raw) ?: error("响应里找不到 JSON 主体")
-        return json.decodeFromString<ConceptCard>(cleanJson)
+            ?: throw LlmResponseFormatException("LLM 响应里没有 choices/message")
+        val cleanJson = extractJson(raw) ?: throw LlmResponseFormatException("响应里找不到 JSON 主体")
+        return try {
+            json.decodeFromString<ConceptCard>(cleanJson)
+        } catch (error: SerializationException) {
+            throw LlmResponseFormatException("JSON 解析失败：${error.message}", error)
+        }
+    }
+
+    private suspend fun lookupWithJsonRetry(
+        word: String,
+        cfg: ProviderConfig,
+    ): ConceptCard {
+        return try {
+            performLookup(word, cfg, retryHint = null)
+        } catch (firstError: LlmResponseFormatException) {
+            performLookup(word, cfg, retryHint = firstError.message)
+        } catch (error: Throwable) {
+            throw error
+        }
     }
 
     /** 容错：从可能包含 Markdown 包裹的响应里提取 { ... } 主体。 */
@@ -128,5 +134,30 @@ class ConceptRepository @Inject constructor(
 
     private fun normalizeEntry(value: String): String {
         return value.trim().lowercase().replace(Regex("""\s+"""), " ")
+    }
+
+    private class LlmResponseFormatException(
+        message: String,
+        cause: Throwable? = null,
+    ) : IllegalStateException(message, cause)
+
+    private fun Throwable.toUserFacingException(): Throwable {
+        val message = when (this) {
+            is HttpException -> when (code()) {
+                401 -> "API Key 无效（HTTP 401），请检查设置里的 API Key"
+                403 -> "权限不足或模型不可用（HTTP 403），请检查模型名和账号权限"
+                404 -> "接口或模型不存在（HTTP 404），请检查 Base URL 和模型名"
+                408 -> "请求超时（HTTP 408），请稍后重试"
+                429 -> "请求频率或额度受限（HTTP 429），请稍后重试"
+                in 500..599 -> "模型服务暂时异常（HTTP ${code()}），请稍后重试"
+                else -> "请求失败（HTTP ${code()}），请检查设置或稍后重试"
+            }
+
+            is IOException -> "网络连接失败，请检查网络连接或 Base URL 是否正确"
+            is LlmResponseFormatException -> "解析失败，LLM 响应格式异常，请重新生成"
+            else -> this.message ?: "未知错误"
+        }
+
+        return IllegalStateException(message, this)
     }
 }

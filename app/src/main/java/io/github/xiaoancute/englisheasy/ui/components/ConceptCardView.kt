@@ -171,7 +171,11 @@ private fun WordHeader(
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(start = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 if (onShareClick != null) {
                     IconButton(onClick = onShareClick) {
                         Icon(
