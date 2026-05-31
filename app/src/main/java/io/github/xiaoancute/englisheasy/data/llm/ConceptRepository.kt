@@ -61,6 +61,10 @@ class ConceptRepository @Inject constructor(
                 json = json,
                 isFavorite = cached?.isFavorite == true,
                 userNote = cached?.userNote.orEmpty(),
+                reviewDueAt = cached?.reviewDueAt ?: System.currentTimeMillis(),
+                reviewStrength = cached?.reviewStrength ?: 0,
+                reviewCount = cached?.reviewCount ?: 0,
+                lastReviewedAt = cached?.lastReviewedAt ?: 0L,
             )
         )
         card

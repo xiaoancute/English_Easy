@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
@@ -23,6 +24,7 @@ import io.github.xiaoancute.englisheasy.ui.history.FavoritesScreen
 import io.github.xiaoancute.englisheasy.ui.history.HistoryScreen
 import io.github.xiaoancute.englisheasy.ui.home.HomeScreen
 import io.github.xiaoancute.englisheasy.ui.settings.SettingsScreen
+import io.github.xiaoancute.englisheasy.ui.study.StudyScreen
 
 /**
  * 顶层 Composable —— 查词 / 历史 / 收藏 / 设置。
@@ -69,7 +71,10 @@ fun AppRoot() {
                 },
                 modifier = Modifier.padding(innerPadding),
             )
-            3 -> SettingsScreen(
+            3 -> StudyScreen(
+                modifier = Modifier.padding(innerPadding),
+            )
+            4 -> SettingsScreen(
                 modifier = Modifier.padding(innerPadding),
             )
         }
@@ -80,5 +85,6 @@ private enum class BottomNavItem(val label: String, val icon: ImageVector) {
     HOME("查词", Icons.Default.Home),
     HISTORY("历史", Icons.Default.History),
     FAVORITES("收藏", Icons.Default.Star),
+    STUDY("学习", Icons.Default.School),
     SETTINGS("设置", Icons.Default.Settings),
 }

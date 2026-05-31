@@ -33,6 +33,26 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE concept_cards ADD COLUMN reviewDueAt INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL(
+                "ALTER TABLE concept_cards ADD COLUMN reviewStrength INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL(
+                "ALTER TABLE concept_cards ADD COLUMN reviewCount INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL(
+                "ALTER TABLE concept_cards ADD COLUMN lastReviewedAt INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL(
+                "UPDATE concept_cards SET reviewDueAt = queriedAt WHERE reviewDueAt = 0"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -40,7 +60,7 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "english_easy.db"
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
     }
 
     @Provides
