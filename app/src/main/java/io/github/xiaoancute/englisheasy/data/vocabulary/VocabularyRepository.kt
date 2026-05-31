@@ -10,7 +10,7 @@ class VocabularyRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val entries: List<VocabularyEntry> by lazy {
-        context.assets.open("vocabulary/student_seed_v1.json").bufferedReader().use { reader ->
+        context.assets.open("vocabulary/student_vocabulary_v1.json").bufferedReader().use { reader ->
             VocabularyCatalog.decode(reader.readText())
         }
     }

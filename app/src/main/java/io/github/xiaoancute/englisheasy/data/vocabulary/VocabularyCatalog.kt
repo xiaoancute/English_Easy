@@ -40,7 +40,7 @@ object VocabularyCatalog {
 
     fun decode(rawJson: String): List<VocabularyEntry> {
         return json.decodeFromString<List<VocabularyEntry>>(rawJson)
-            .map { it.copy(word = it.word.trim().lowercase()) }
+            .map { it.copy(word = normalizeWord(it.word)) }
             .filter { it.word.isNotBlank() }
             .distinctBy { it.stage to it.word }
     }
@@ -63,5 +63,12 @@ object VocabularyCatalog {
                 )
             }
         }
+    }
+
+    private fun normalizeWord(word: String): String {
+        return word
+            .trim()
+            .lowercase()
+            .replace(Regex("\\s+"), " ")
     }
 }
