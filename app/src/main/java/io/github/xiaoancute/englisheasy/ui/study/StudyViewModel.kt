@@ -8,8 +8,12 @@ import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
 import io.github.xiaoancute.englisheasy.data.review.ReviewGrade
 import io.github.xiaoancute.englisheasy.data.review.ReviewScheduler
+import io.github.xiaoancute.englisheasy.data.vocabulary.VocabularyPack
+import io.github.xiaoancute.englisheasy.data.vocabulary.VocabularyRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -25,7 +29,10 @@ data class StudyCard(
 class StudyViewModel @Inject constructor(
     private val dao: ConceptCardDao,
     private val json: Json,
+    vocabularyRepository: VocabularyRepository,
 ) : ViewModel() {
+
+    private val selectedPackWords = MutableStateFlow(emptyList<String>())
 
     val dueCards: StateFlow<List<StudyCard>> = dao.getDueReviews(System.currentTimeMillis())
         .map { entities ->
@@ -41,6 +48,30 @@ class StudyViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyList(),
         )
+
+    val vocabularyPacks: StateFlow<List<VocabularyPack>> = dao.observeLearnedWords()
+        .map { words -> vocabularyRepository.getPacks(words.toSet()) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
+    val selectedWords: StateFlow<List<String>> = combine(
+        selectedPackWords,
+        dao.observeLearnedWords(),
+    ) { packWords, learnedWords ->
+        val learned = learnedWords.map { it.trim().lowercase() }.toSet()
+        packWords.filterNot { it.trim().lowercase() in learned }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    fun selectPack(pack: VocabularyPack) {
+        selectedPackWords.value = pack.entries.map { it.word }
+    }
 
     fun review(entity: ConceptCardEntity, grade: ReviewGrade) {
         viewModelScope.launch {

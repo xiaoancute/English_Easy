@@ -1,0 +1,37 @@
+[
+  {"word":"apple","stage":"PRIMARY","source":"seed-v1"},
+  {"word":"family","stage":"PRIMARY","source":"seed-v1"},
+  {"word":"friend","stage":"PRIMARY","source":"seed-v1"},
+  {"word":"happy","stage":"PRIMARY","source":"seed-v1"},
+  {"word":"morning","stage":"PRIMARY","source":"seed-v1"},
+  {"word":"school","stage":"PRIMARY","source":"seed-v1"},
+  {"word":"teacher","stage":"PRIMARY","source":"seed-v1"},
+  {"word":"water","stage":"PRIMARY","source":"seed-v1"},
+
+  {"word":"develop","stage":"JUNIOR","source":"seed-v1"},
+  {"word":"environment","stage":"JUNIOR","source":"seed-v1"},
+  {"word":"experience","stage":"JUNIOR","source":"seed-v1"},
+  {"word":"important","stage":"JUNIOR","source":"seed-v1"},
+  {"word":"protect","stage":"JUNIOR","source":"seed-v1"},
+  {"word":"receive","stage":"JUNIOR","source":"seed-v1"},
+  {"word":"suggest","stage":"JUNIOR","source":"seed-v1"},
+  {"word":"wonder","stage":"JUNIOR","source":"seed-v1"},
+
+  {"word":"available","stage":"SENIOR","source":"seed-v1"},
+  {"word":"charge","stage":"SENIOR","source":"seed-v1"},
+  {"word":"compromise","stage":"SENIOR","source":"seed-v1"},
+  {"word":"issue","stage":"SENIOR","source":"seed-v1"},
+  {"word":"subtle","stage":"SENIOR","source":"seed-v1"},
+  {"word":"frame","stage":"SENIOR","source":"seed-v1"},
+  {"word":"address","stage":"SENIOR","source":"seed-v1"},
+  {"word":"approach","stage":"SENIOR","source":"seed-v1"},
+
+  {"word":"draw","stage":"GAOKAO","source":"seed-v1","tags":["polysemy"]},
+  {"word":"hold","stage":"GAOKAO","source":"seed-v1","tags":["polysemy"]},
+  {"word":"pick","stage":"GAOKAO","source":"seed-v1","tags":["polysemy"]},
+  {"word":"stand","stage":"GAOKAO","source":"seed-v1","tags":["polysemy"]},
+  {"word":"turn","stage":"GAOKAO","source":"seed-v1","tags":["polysemy"]},
+  {"word":"carry","stage":"GAOKAO","source":"seed-v1","tags":["polysemy"]},
+  {"word":"break the ice","stage":"GAOKAO","source":"seed-v1","tags":["phrase"]},
+  {"word":"take a break","stage":"GAOKAO","source":"seed-v1","tags":["phrase"]}
+]

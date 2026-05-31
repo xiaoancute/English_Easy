@@ -20,6 +20,9 @@ interface ConceptCardDao {
     @Query("SELECT * FROM concept_cards WHERE isFavorite = 1 ORDER BY queriedAt DESC")
     fun getFavoritesByTimeDesc(): Flow<List<ConceptCardEntity>>
 
+    @Query("SELECT word FROM concept_cards")
+    fun observeLearnedWords(): Flow<List<String>>
+
     @Query("SELECT * FROM concept_cards WHERE reviewDueAt <= :now ORDER BY reviewDueAt ASC, queriedAt DESC")
     fun getDueReviews(now: Long): Flow<List<ConceptCardEntity>>
 

@@ -7,12 +7,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -28,17 +32,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.review.ReviewGrade
+import io.github.xiaoancute.englisheasy.data.vocabulary.VocabularyPack
 import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyScreen(
+    onWordClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: StudyViewModel = hiltViewModel(),
 ) {
     val dueCards by viewModel.dueCards.collectAsState()
+    val vocabularyPacks by viewModel.vocabularyPacks.collectAsState()
+    val selectedWords by viewModel.selectedWords.collectAsState()
     val current = dueCards.firstOrNull()
     var revealedWord by remember { mutableStateOf<String?>(null) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     LaunchedEffect(current?.entity?.word) {
         revealedWord = null
@@ -52,17 +61,40 @@ fun StudyScreen(
             )
         },
     ) { innerPadding ->
-        if (current == null) {
-            EmptyStudyState(modifier = Modifier.padding(innerPadding))
-        } else {
-            StudyCardContent(
-                studyCard = current,
-                remainingCount = dueCards.size,
-                revealed = revealedWord == current.entity.word,
-                onReveal = { revealedWord = current.entity.word },
-                onReview = { grade -> viewModel.review(current.entity, grade) },
-                modifier = Modifier.padding(innerPadding),
-            )
+        Column(modifier = Modifier.padding(innerPadding)) {
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("复习") },
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("词库") },
+                )
+            }
+
+            if (selectedTab == 0) {
+                if (current == null) {
+                    EmptyStudyState()
+                } else {
+                    StudyCardContent(
+                        studyCard = current,
+                        remainingCount = dueCards.size,
+                        revealed = revealedWord == current.entity.word,
+                        onReveal = { revealedWord = current.entity.word },
+                        onReview = { grade -> viewModel.review(current.entity, grade) },
+                    )
+                }
+            } else {
+                VocabularySection(
+                    packs = vocabularyPacks,
+                    selectedWords = selectedWords,
+                    onPackSelected = viewModel::selectPack,
+                    onWordClick = onWordClick,
+                )
+            }
         }
     }
 }
@@ -78,6 +110,79 @@ private fun EmptyStudyState(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
         )
+    }
+}
+
+@Composable
+private fun VocabularySection(
+    packs: List<VocabularyPack>,
+    selectedWords: List<String>,
+    onPackSelected: (VocabularyPack) -> Unit,
+    onWordClick: (String) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(packs, key = { it.stage.name }) { pack ->
+            VocabularyPackItem(
+                pack = pack,
+                onClick = { onPackSelected(pack) },
+            )
+        }
+
+        if (selectedWords.isNotEmpty()) {
+            item {
+                Text(
+                    text = "未学词",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            items(selectedWords, key = { it }) { word ->
+                OutlinedButton(
+                    onClick = { onWordClick(word) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(word)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VocabularyPackItem(
+    pack: VocabularyPack,
+    onClick: () -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "${pack.stage.label}词库",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "${pack.learnedCount} / ${pack.totalCount}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            OutlinedButton(onClick = onClick) {
+                Text("查看")
+            }
+        }
     }
 }
 

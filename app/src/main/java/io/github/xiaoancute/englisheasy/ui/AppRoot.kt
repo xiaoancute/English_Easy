@@ -72,6 +72,9 @@ fun AppRoot() {
                 modifier = Modifier.padding(innerPadding),
             )
             3 -> StudyScreen(
+                onWordClick = { word ->
+                    pendingWordFromHistory = word
+                },
                 modifier = Modifier.padding(innerPadding),
             )
             4 -> SettingsScreen(
