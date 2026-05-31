@@ -56,11 +56,17 @@ class VocabularyCatalogTest {
         val entries = VocabularyCatalog.decode(vocabularyAssetPath().toFile().readText())
 
         val primaryEntries = entries.filter { it.stage == VocabularyStage.PRIMARY }
+        val juniorEntries = entries.filter { it.stage == VocabularyStage.JUNIOR }
+        val seniorEntries = entries.filter { it.stage == VocabularyStage.SENIOR }
         val gaokaoEntries = entries.filter { it.stage == VocabularyStage.GAOKAO }
 
         assertTrue(primaryEntries.size > 800)
+        assertTrue(juniorEntries.size > 1_900)
+        assertTrue(seniorEntries.size > 3_700)
         assertTrue(gaokaoEntries.size > 3_000)
         assertTrue(primaryEntries.any { it.word == "school" && it.source == "guanchunsheng/guanyiyi-english@main" })
+        assertTrue(juniorEntries.any { it.word == "boat" && it.source == "KyleBing/english-vocabulary@master" })
+        assertTrue(seniorEntries.any { it.word == "although" && it.source == "KyleBing/english-vocabulary@master" })
         assertTrue(gaokaoEntries.any { it.word == "abandon" && it.source == "pluto0x0/word3500@master" })
         assertTrue(gaokaoEntries.any { it.word == "break the ice" && "phrase" in it.tags })
     }

@@ -28,6 +28,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## KyleBing/english-vocabulary
+
+Source: https://github.com/KyleBing/english-vocabulary
+
+This repository does not declare a standard SPDX license. Its README states that the vocabulary resource was placed on GitHub to be shared for learning projects. English Easy bundles only the English headwords from the junior and senior text files, without bundling the source definitions, translations, phrases, or examples.
+
 ## pluto0x0/word3500
 
 Source: https://github.com/pluto0x0/word3500
