@@ -98,10 +98,14 @@ jobs:
           if [[ "$GITHUB_REF_NAME" == *"-rc"* ]]; then
             prerelease_args+=(--prerelease)
           fi
+          notes_args=(--notes "Automated Android release build for $GITHUB_REF_NAME.")
+          if [[ -f "docs/release-notes/$GITHUB_REF_NAME.md" ]]; then
+            notes_args=(--notes-file "docs/release-notes/$GITHUB_REF_NAME.md")
+          fi
           gh release create "$GITHUB_REF_NAME" \
             app/build/outputs/apk/release/*.apk \
             --title "$GITHUB_REF_NAME" \
-            --notes "Automated Android release build for $GITHUB_REF_NAME." \
+            "${notes_args[@]}" \
             "${prerelease_args[@]}"
         env:
           GH_TOKEN: ${{ github.token }}

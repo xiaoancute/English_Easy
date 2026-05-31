@@ -56,7 +56,7 @@ fun HistoryScreen(
 
     SavedCardsScreen(
         title = "查询历史",
-        emptyText = "还没有查询记录",
+        emptyText = "暂无历史记录",
         cards = history,
         onWordClick = onWordClick,
         onDelete = viewModel::delete,
@@ -78,7 +78,7 @@ fun FavoritesScreen(
 
     SavedCardsScreen(
         title = "收藏",
-        emptyText = "还没有收藏的词",
+        emptyText = "暂无收藏",
         cards = favorites,
         onWordClick = onWordClick,
         onDelete = viewModel::delete,

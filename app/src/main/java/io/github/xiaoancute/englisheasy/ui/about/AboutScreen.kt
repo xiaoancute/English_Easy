@@ -79,6 +79,12 @@ fun AboutScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
 
+            InfoCard(title = "版本信息") {
+                BulletText("App ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                BulletText("概念引擎 v$CURRENT_PROMPT_VERSION")
+                BulletText("License: MIT")
+            }
+
             InfoCard(title = "隐私说明") {
                 BulletText("你的 API Key 用 Android Keystore 加密后只存在本机，不会上传任何服务器。")
                 BulletText("查词请求直接发往你自己配置的 LLM 端点，本应用没有任何中间服务器。")
