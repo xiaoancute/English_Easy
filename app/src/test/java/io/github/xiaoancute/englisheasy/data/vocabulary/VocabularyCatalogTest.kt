@@ -53,7 +53,7 @@ class VocabularyCatalogTest {
 
     @Test
     fun bundledStudentVocabularyUsesExpandedLicensedSources() {
-        val entries = VocabularyCatalog.decode(Files.readString(vocabularyAssetPath()))
+        val entries = VocabularyCatalog.decode(vocabularyAssetPath().toFile().readText())
 
         val primaryEntries = entries.filter { it.stage == VocabularyStage.PRIMARY }
         val gaokaoEntries = entries.filter { it.stage == VocabularyStage.GAOKAO }
