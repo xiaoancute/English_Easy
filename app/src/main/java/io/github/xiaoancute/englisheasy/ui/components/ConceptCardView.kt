@@ -45,6 +45,7 @@ import io.github.xiaoancute.englisheasy.data.model.CoreConcept
 import io.github.xiaoancute.englisheasy.data.model.EntryType
 import io.github.xiaoancute.englisheasy.data.model.Misconception
 import io.github.xiaoancute.englisheasy.data.model.Scenario
+import io.github.xiaoancute.englisheasy.data.model.label
 import java.util.Locale
 
 @Composable
@@ -164,11 +165,7 @@ private fun WordHeader(
                 color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
                 Text(
-                    text = when (entryType) {
-                        EntryType.WORD -> "单词"
-                        EntryType.FIXED_PHRASE -> "固定短语"
-                        EntryType.FREE_COMBINATION -> "普通词组"
-                    },
+                    text = entryType.label,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,

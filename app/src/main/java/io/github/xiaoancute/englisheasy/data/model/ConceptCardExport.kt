@@ -74,13 +74,6 @@ private fun StringBuilder.appendCard(card: ConceptCard, headingLevel: Int) {
     }
 }
 
-private val EntryType.label: String
-    get() = when (this) {
-        EntryType.WORD -> "单词"
-        EntryType.FIXED_PHRASE -> "固定短语"
-        EntryType.FREE_COMBINATION -> "普通词组"
-    }
-
 private val BranchType.label: String
     get() = when (this) {
         BranchType.HOMONYM -> "同形异义"

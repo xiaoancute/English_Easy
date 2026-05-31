@@ -91,4 +91,7 @@ dependencies {
     // Coroutines / Serialization
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+
+    // Tests
+    testImplementation(kotlin("test"))
 }

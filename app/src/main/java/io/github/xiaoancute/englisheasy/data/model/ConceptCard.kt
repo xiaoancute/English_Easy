@@ -29,6 +29,13 @@ enum class EntryType {
     @SerialName("FREE_COMBINATION") FREE_COMBINATION,
 }
 
+val EntryType.label: String
+    get() = when (this) {
+        EntryType.WORD -> "单词"
+        EntryType.FIXED_PHRASE -> "固定短语"
+        EntryType.FREE_COMBINATION -> "普通词组"
+    }
+
 @Serializable
 data class CoreConcept(
     val picture: String,
