@@ -1,0 +1,31 @@
+# Release checklist
+
+This project can build unsigned release APKs without secrets. Signed release APKs are enabled only when the following GitHub Secrets are configured.
+
+## GitHub Secrets
+
+- `RELEASE_KEYSTORE_BASE64`: base64 encoded Android keystore file.
+- `RELEASE_KEYSTORE_PASSWORD`: keystore password.
+- `RELEASE_KEY_ALIAS`: key alias inside the keystore.
+- `RELEASE_KEY_PASSWORD`: key password.
+
+Optional GitHub Variable:
+
+- `VERSION_CODE`: integer Android version code used by CI.
+
+## Create the keystore secret
+
+```bash
+base64 -w 0 release.keystore
+```
+
+Copy the output into `RELEASE_KEYSTORE_BASE64`.
+
+## Release flow
+
+1. Update `VERSION_CODE` in GitHub repository variables.
+2. Create and push a tag like `v0.1.0`.
+3. GitHub Actions runs unit tests, debug build, and release build.
+4. On `v*` tags, GitHub Actions creates a GitHub Release with the release APK.
+
+If signing secrets are missing, CI still uploads an unsigned release APK artifact for testing, but that APK is not Play-ready.

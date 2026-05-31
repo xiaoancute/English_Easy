@@ -3,13 +3,20 @@ name: Build
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
   pull_request:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
@@ -29,6 +36,31 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
+      - name: Resolve release version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == v* ]]; then
+            echo "VERSION_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          fi
+          if [[ -n "${VERSION_CODE_FROM_VAR}" ]]; then
+            echo "VERSION_CODE=${VERSION_CODE_FROM_VAR}" >> "$GITHUB_ENV"
+          fi
+        env:
+          VERSION_CODE_FROM_VAR: ${{ vars.VERSION_CODE }}
+
+      - name: Decode release keystore
+        shell: bash
+        run: |
+          if [[ -z "$RELEASE_KEYSTORE_BASE64" ]]; then
+            echo "No release keystore configured; release APK will be unsigned."
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/signing"
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/signing/release.keystore"
+          echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/signing/release.keystore" >> "$GITHUB_ENV"
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
@@ -37,6 +69,10 @@ jobs:
 
       - name: Assemble release APK
         run: ./gradlew assembleRelease --stacktrace
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -46,10 +82,21 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload unsigned release APK
+      - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-unsigned
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          name: app-release
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Create GitHub Release
+        if: ${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'v') }}
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            app/build/outputs/apk/release/*.apk \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Automated Android release build for $GITHUB_REF_NAME."
+        env:
+          GH_TOKEN: ${{ github.token }}

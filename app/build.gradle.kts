@@ -7,6 +7,19 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+fun env(name: String): String? = System.getenv(name)?.takeIf { it.isNotBlank() }
+
+val releaseKeystorePath = env("RELEASE_KEYSTORE_PATH")
+val releaseKeystorePassword = env("RELEASE_KEYSTORE_PASSWORD")
+val releaseKeyAlias = env("RELEASE_KEY_ALIAS")
+val releaseKeyPassword = env("RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { it != null }
+
 android {
     namespace = "io.github.xiaoancute.englisheasy"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -15,16 +28,30 @@ android {
         applicationId = "io.github.xiaoancute.englisheasy"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = env("VERSION_CODE")?.toIntOrNull() ?: 1
+        versionName = env("VERSION_NAME") ?: "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
