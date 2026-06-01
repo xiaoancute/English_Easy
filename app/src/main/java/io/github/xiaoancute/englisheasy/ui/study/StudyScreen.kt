@@ -45,6 +45,7 @@ fun StudyScreen(
     val dueCards by viewModel.dueCards.collectAsState()
     val vocabularyPacks by viewModel.vocabularyPacks.collectAsState()
     val selectedWords by viewModel.selectedWords.collectAsState()
+    val todayWords by viewModel.todayWords.collectAsState()
     val current = dueCards.firstOrNull()
     var revealedWord by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableStateOf(0) }
@@ -90,6 +91,7 @@ fun StudyScreen(
             } else {
                 VocabularySection(
                     packs = vocabularyPacks,
+                    todayWords = todayWords,
                     selectedWords = selectedWords,
                     onPackSelected = viewModel::selectPack,
                     onWordClick = onWordClick,
@@ -116,10 +118,12 @@ private fun EmptyStudyState(modifier: Modifier = Modifier) {
 @Composable
 private fun VocabularySection(
     packs: List<VocabularyPack>,
+    todayWords: List<String>,
     selectedWords: List<String>,
     onPackSelected: (VocabularyPack) -> Unit,
     onWordClick: (String) -> Unit,
 ) {
+    val remainingWords = selectedWords.filterNot { it in todayWords }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -133,7 +137,26 @@ private fun VocabularySection(
             )
         }
 
-        if (selectedWords.isNotEmpty()) {
+        if (todayWords.isNotEmpty()) {
+            item {
+                Text(
+                    text = "今日学习 · ${todayWords.size} 个",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            items(todayWords, key = { "today:$it" }) { word ->
+                Button(
+                    onClick = { onWordClick(word) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(word)
+                }
+            }
+        }
+
+        if (remainingWords.isNotEmpty()) {
             item {
                 Text(
                     text = "未学词",
@@ -142,7 +165,7 @@ private fun VocabularySection(
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
-            items(selectedWords, key = { it }) { word ->
+            items(remainingWords, key = { "word:$it" }) { word ->
                 OutlinedButton(
                     onClick = { onWordClick(word) },
                     modifier = Modifier.fillMaxWidth(),

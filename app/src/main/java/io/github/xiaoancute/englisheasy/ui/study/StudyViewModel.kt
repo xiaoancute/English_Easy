@@ -3,6 +3,7 @@ package io.github.xiaoancute.englisheasy.ui.study
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.xiaoancute.englisheasy.data.learning.LearningPlanner
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
@@ -61,8 +62,26 @@ class StudyViewModel @Inject constructor(
         selectedPackWords,
         dao.observeLearnedWords(),
     ) { packWords, learnedWords ->
-        val learned = learnedWords.map { it.trim().lowercase() }.toSet()
-        packWords.filterNot { it.trim().lowercase() in learned }
+        val learned = learnedWords.map(::normalizeWord).toSet()
+        packWords
+            .map(::normalizeWord)
+            .distinct()
+            .filterNot { it in learned }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    val todayWords: StateFlow<List<String>> = combine(
+        selectedPackWords,
+        dao.observeLearnedWords(),
+    ) { packWords, learnedWords ->
+        LearningPlanner.todayWords(
+            words = packWords,
+            learnedWords = learnedWords.toSet(),
+            limit = TODAY_WORD_LIMIT,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -88,5 +107,16 @@ class StudyViewModel @Inject constructor(
                 lastReviewedAt = next.lastReviewedAt,
             )
         }
+    }
+
+    private fun normalizeWord(word: String): String {
+        return word
+            .trim()
+            .lowercase()
+            .replace(Regex("\\s+"), " ")
+    }
+
+    private companion object {
+        const val TODAY_WORD_LIMIT = 10
     }
 }
