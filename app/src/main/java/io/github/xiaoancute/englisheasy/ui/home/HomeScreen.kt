@@ -116,9 +116,10 @@ fun HomeScreen(
                 isConfigured = isConfigured,
                 onFavoriteChange = viewModel::setFavorite,
                 onNoteChange = viewModel::setNote,
+                onExampleChange = viewModel::setExample,
                 onRefresh = viewModel::refreshCurrent,
-                onShare = { card, note -> shareCard(context, card, note) },
-                onCopy = { card, note -> copyCard(context, card, note) },
+                onShare = { card, note, example -> shareCard(context, card, note, example) },
+                onCopy = { card, note, example -> copyCard(context, card, note, example) },
             )
         }
     }
@@ -130,9 +131,10 @@ private fun ResultArea(
     isConfigured: Boolean,
     onFavoriteChange: (Boolean) -> Unit,
     onNoteChange: (String) -> Unit,
+    onExampleChange: (String) -> Unit,
     onRefresh: () -> Unit,
-    onShare: (ConceptCard, String) -> Unit,
-    onCopy: (ConceptCard, String) -> Unit,
+    onShare: (ConceptCard, String, String) -> Unit,
+    onCopy: (ConceptCard, String, String) -> Unit,
 ) {
     when (state) {
         HomeUiState.Idle -> if (isConfigured) IdleHint() else SetupGuide()
@@ -141,11 +143,13 @@ private fun ResultArea(
             card = state.card,
             isFavorite = state.isFavorite,
             onFavoriteChange = onFavoriteChange,
-            onShareClick = { onShare(state.card, state.userNote) },
-            onCopyClick = { onCopy(state.card, state.userNote) },
+            onShareClick = { onShare(state.card, state.userNote, state.userExample) },
+            onCopyClick = { onCopy(state.card, state.userNote, state.userExample) },
             onRefreshClick = onRefresh,
             userNote = state.userNote,
             onNoteChange = onNoteChange,
+            userExample = state.userExample,
+            onExampleChange = onExampleChange,
         )
         is HomeUiState.Error -> ErrorView(message = state.message)
     }
@@ -155,11 +159,12 @@ private fun shareCard(
     context: android.content.Context,
     card: ConceptCard,
     userNote: String,
+    userExample: String,
 ) {
     val sendIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_SUBJECT, "英易概念卡：${card.word}")
-        putExtra(Intent.EXTRA_TEXT, card.toShareText(userNote))
+        putExtra(Intent.EXTRA_TEXT, card.toShareText(userNote, userExample))
     }
     context.startActivity(
         Intent.createChooser(sendIntent, "分享概念卡")
@@ -170,10 +175,11 @@ private fun copyCard(
     context: android.content.Context,
     card: ConceptCard,
     userNote: String,
+    userExample: String,
 ) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
     clipboard.setPrimaryClip(
-        ClipData.newPlainText("英易概念卡：${card.word}", card.toShareText(userNote))
+        ClipData.newPlainText("英易概念卡：${card.word}", card.toShareText(userNote, userExample))
     )
     Toast.makeText(context, "已复制概念卡", Toast.LENGTH_SHORT).show()
 }

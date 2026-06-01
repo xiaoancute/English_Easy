@@ -23,6 +23,7 @@ sealed interface HomeUiState {
         val card: ConceptCard,
         val isFavorite: Boolean,
         val userNote: String,
+        val userExample: String,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
@@ -37,6 +38,7 @@ class HomeViewModel @Inject constructor(
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
     private var favoriteJob: Job? = null
     private var noteJob: Job? = null
+    private var exampleJob: Job? = null
 
     /** 是否已配置可用的 Provider；初始乐观为 true，避免已配置用户看到引导闪烁。 */
     val isConfigured: StateFlow<Boolean> = settings.configFlow
@@ -49,12 +51,19 @@ class HomeViewModel @Inject constructor(
         _state.value = HomeUiState.Loading
         favoriteJob?.cancel()
         noteJob?.cancel()
+        exampleJob?.cancel()
         viewModelScope.launch {
             repo.lookup(trimmed, forceRefresh = forceRefresh).fold(
                 onSuccess = { card ->
-                    _state.value = HomeUiState.Success(card = card, isFavorite = false, userNote = "")
+                    _state.value = HomeUiState.Success(
+                        card = card,
+                        isFavorite = false,
+                        userNote = "",
+                        userExample = "",
+                    )
                     observeFavorite(card.word)
                     observeNote(card.word)
+                    observeExample(card.word)
                 },
                 onFailure = { _state.value = HomeUiState.Error(it.message ?: "未知错误") },
             )
@@ -82,9 +91,18 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun setExample(example: String) {
+        val current = _state.value as? HomeUiState.Success ?: return
+        _state.value = current.copy(userExample = example)
+        viewModelScope.launch {
+            repo.setExample(current.card.word, example)
+        }
+    }
+
     fun reset() {
         favoriteJob?.cancel()
         noteJob?.cancel()
+        exampleJob?.cancel()
         _state.value = HomeUiState.Idle
     }
 
@@ -107,6 +125,18 @@ class HomeViewModel @Inject constructor(
                 val current = _state.value as? HomeUiState.Success
                 if (current != null && current.card.word.equals(word, ignoreCase = true)) {
                     _state.value = current.copy(userNote = userNote)
+                }
+            }
+        }
+    }
+
+    private fun observeExample(word: String) {
+        exampleJob?.cancel()
+        exampleJob = viewModelScope.launch {
+            repo.observeExample(word).collect { userExample ->
+                val current = _state.value as? HomeUiState.Success
+                if (current != null && current.card.word.equals(word, ignoreCase = true)) {
+                    _state.value = current.copy(userExample = userExample)
                 }
             }
         }

@@ -172,7 +172,9 @@ private fun HistoryItem(
     onFavoriteChange: (Boolean) -> Unit,
     onCopy: () -> Unit,
 ) {
-    val hasBadges = entity.userNote.isNotBlank() || entity.promptVersion < CURRENT_PROMPT_VERSION
+    val hasBadges = entity.userNote.isNotBlank() ||
+        entity.userExample.isNotBlank() ||
+        entity.promptVersion < CURRENT_PROMPT_VERSION
 
     Card(
         modifier = Modifier
@@ -204,6 +206,13 @@ private fun HistoryItem(
                                 icon = Icons.Default.EditNote,
                                 text = "有笔记",
                                 contentDescription = "有笔记",
+                            )
+                        }
+                        if (entity.userExample.isNotBlank()) {
+                            InlineBadge(
+                                icon = Icons.Default.EditNote,
+                                text = "有例句",
+                                contentDescription = "有例句",
                             )
                         }
                         if (entity.promptVersion < CURRENT_PROMPT_VERSION) {

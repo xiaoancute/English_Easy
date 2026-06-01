@@ -41,6 +41,10 @@ class ConceptRepository @Inject constructor(
         return dao.observeNote(normalizeEntry(word)).map { it.orEmpty() }
     }
 
+    fun observeExample(word: String): Flow<String> {
+        return dao.observeExample(normalizeEntry(word)).map { it.orEmpty() }
+    }
+
     suspend fun lookup(word: String, forceRefresh: Boolean = false): Result<ConceptCard> = runCatching {
         val normalized = normalizeEntry(word)
         require(normalized.isNotEmpty()) { "词或短语不能为空" }
@@ -64,6 +68,7 @@ class ConceptRepository @Inject constructor(
                 json = json,
                 isFavorite = cached?.isFavorite == true,
                 userNote = cached?.userNote.orEmpty(),
+                userExample = cached?.userExample.orEmpty(),
                 reviewDueAt = cached?.reviewDueAt ?: System.currentTimeMillis(),
                 reviewStrength = cached?.reviewStrength ?: 0,
                 reviewCount = cached?.reviewCount ?: 0,
@@ -86,6 +91,12 @@ class ConceptRepository @Inject constructor(
         val normalized = normalizeEntry(word)
         require(normalized.isNotEmpty()) { "词或短语不能为空" }
         dao.setNote(normalized, note)
+    }
+
+    suspend fun setExample(word: String, example: String) {
+        val normalized = normalizeEntry(word)
+        require(normalized.isNotEmpty()) { "词或短语不能为空" }
+        dao.setExample(normalized, example)
     }
 
     private suspend fun performLookup(

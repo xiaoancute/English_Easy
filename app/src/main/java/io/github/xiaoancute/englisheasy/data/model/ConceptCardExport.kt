@@ -1,12 +1,22 @@
 package io.github.xiaoancute.englisheasy.data.model
 
-fun ConceptCard.toShareText(userNote: String = ""): String = buildString {
+fun ConceptCard.toShareText(
+    userNote: String = "",
+    userExample: String = "",
+): String = buildString {
     appendCard(this@toShareText, headingLevel = 1)
     val trimmedNote = userNote.trim()
+    val trimmedExample = userExample.trim()
     if (trimmedNote.isNotEmpty()) {
         appendLine("## 我的理解")
         appendLine()
         appendLine(trimmedNote)
+        appendLine()
+    }
+    if (trimmedExample.isNotEmpty()) {
+        appendLine("## 我的例句")
+        appendLine()
+        appendLine(trimmedExample)
         appendLine()
     }
     appendLine()

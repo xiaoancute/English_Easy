@@ -58,6 +58,8 @@ fun ConceptCardView(
     onRefreshClick: (() -> Unit)? = null,
     userNote: String = "",
     onNoteChange: ((String) -> Unit)? = null,
+    userExample: String = "",
+    onExampleChange: ((String) -> Unit)? = null,
     scrollable: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -132,6 +134,13 @@ fun ConceptCardView(
             UserNoteSection(
                 note = userNote,
                 onNoteChange = onNoteChange,
+            )
+        }
+
+        if (onExampleChange != null) {
+            UserExampleSection(
+                example = userExample,
+                onExampleChange = onExampleChange,
             )
         }
     }
@@ -451,6 +460,23 @@ private fun UserNoteSection(
             minLines = 3,
             maxLines = 6,
             placeholder = { Text("写下你自己的理解") },
+        )
+    }
+}
+
+@Composable
+private fun UserExampleSection(
+    example: String,
+    onExampleChange: (String) -> Unit,
+) {
+    Section(title = "我的例句") {
+        OutlinedTextField(
+            value = example,
+            onValueChange = onExampleChange,
+            modifier = Modifier.fillMaxWidth(1f),
+            minLines = 2,
+            maxLines = 4,
+            placeholder = { Text("用这个词写一句自己的英文句子") },
         )
     }
 }

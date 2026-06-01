@@ -15,6 +15,7 @@ import kotlinx.serialization.json.Json
  * - queriedAt：查询时间戳（毫秒），用于历史页排序
  * - isFavorite：用户是否已收藏
  * - userNote：用户写给自己的理解笔记
+ * - userExample：用户写给自己的英文例句
  * - reviewDueAt / reviewStrength / reviewCount / lastReviewedAt：轻量复习队列状态
  */
 @Entity(tableName = "concept_cards")
@@ -26,6 +27,7 @@ data class ConceptCardEntity(
     val queriedAt: Long,
     val isFavorite: Boolean = false,
     val userNote: String = "",
+    val userExample: String = "",
     val reviewDueAt: Long = queriedAt,
     val reviewStrength: Int = 0,
     val reviewCount: Int = 0,
@@ -39,6 +41,7 @@ data class ConceptCardEntity(
             json: Json,
             isFavorite: Boolean = false,
             userNote: String = "",
+            userExample: String = "",
             reviewDueAt: Long = System.currentTimeMillis(),
             reviewStrength: Int = 0,
             reviewCount: Int = 0,
@@ -52,6 +55,7 @@ data class ConceptCardEntity(
                 queriedAt = now,
                 isFavorite = isFavorite,
                 userNote = userNote,
+                userExample = userExample,
                 reviewDueAt = reviewDueAt,
                 reviewStrength = reviewStrength,
                 reviewCount = reviewCount,
