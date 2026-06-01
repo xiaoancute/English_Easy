@@ -1,7 +1,6 @@
 package io.github.xiaoancute.englisheasy.ui.study
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import io.github.xiaoancute.englisheasy.data.learning.TodayStudyTask
 import io.github.xiaoancute.englisheasy.data.review.ReviewGrade
 import io.github.xiaoancute.englisheasy.data.vocabulary.VocabularyPack
 import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
@@ -49,6 +49,8 @@ fun StudyScreen(
     val selectedWords by viewModel.selectedWords.collectAsState()
     val todayWords by viewModel.todayWords.collectAsState()
     val skippedWords by viewModel.skippedWords.collectAsState()
+    val selectedPackLabel by viewModel.selectedPackLabel.collectAsState()
+    val todayTask by viewModel.todayTask.collectAsState()
     val current = dueCards.firstOrNull()
     var revealedWord by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableStateOf(0) }
@@ -70,7 +72,7 @@ fun StudyScreen(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("复习") },
+                    text = { Text("今日") },
                 )
                 Tab(
                     selected = selectedTab == 1,
@@ -80,29 +82,29 @@ fun StudyScreen(
             }
 
             if (selectedTab == 0) {
-                if (current == null) {
-                    EmptyStudyState()
-                } else {
-                    StudyCardContent(
-                        studyCard = current,
-                        remainingCount = dueCards.size,
-                        revealed = revealedWord == current.entity.word,
-                        onReveal = { revealedWord = current.entity.word },
-                        onReview = { grade -> viewModel.review(current.entity, grade) },
-                    )
-                }
-            } else {
-                VocabularySection(
-                    packs = vocabularyPacks,
-                    todayWords = todayWords,
-                    skippedWords = skippedWords,
-                    selectedWords = selectedWords,
-                    onPackSelected = viewModel::selectPack,
+                TodaySection(
+                    task = todayTask,
+                    currentReview = current,
+                    dueReviewCount = dueCards.size,
+                    todayWordCount = todayWords.size,
+                    selectedPackLabel = selectedPackLabel,
+                    revealed = current != null && revealedWord == current.entity.word,
+                    onReveal = { current?.let { revealedWord = it.entity.word } },
+                    onReview = { grade -> current?.let { viewModel.review(it.entity, grade) } },
                     onStartWord = { word ->
                         viewModel.startLearning(word)
                         onWordClick(word)
                     },
                     onSkipWord = viewModel::skipWord,
+                    onOpenPacks = { selectedTab = 1 },
+                )
+            } else {
+                VocabularySection(
+                    packs = vocabularyPacks,
+                    skippedWords = skippedWords,
+                    selectedWords = selectedWords,
+                    selectedPackLabel = selectedPackLabel,
+                    onPackSelected = viewModel::selectPack,
                     onRestoreSkippedWord = viewModel::restoreSkippedWord,
                 )
             }
@@ -111,61 +113,258 @@ fun StudyScreen(
 }
 
 @Composable
-private fun EmptyStudyState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+private fun TodaySection(
+    task: TodayStudyTask,
+    currentReview: StudyCard?,
+    dueReviewCount: Int,
+    todayWordCount: Int,
+    selectedPackLabel: String?,
+    revealed: Boolean,
+    onReveal: () -> Unit,
+    onReview: (ReviewGrade) -> Unit,
+    onStartWord: (String) -> Unit,
+    onSkipWord: (String) -> Unit,
+    onOpenPacks: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = "暂无到期复习",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-        )
+        item {
+            TodaySummary(
+                dueReviewCount = dueReviewCount,
+                todayWordCount = todayWordCount,
+                selectedPackLabel = selectedPackLabel,
+            )
+        }
+
+        item {
+            when (task) {
+                is TodayStudyTask.Review -> {
+                    if (currentReview == null) {
+                        PlainStateCard(
+                            title = "暂无到期复习",
+                            body = "现在可以学一个新词，或者去词库切换范围。",
+                            actionText = "去词库",
+                            onAction = onOpenPacks,
+                        )
+                    } else {
+                        StudyCardContent(
+                            studyCard = currentReview,
+                            remainingCount = task.dueReviewCount,
+                            revealed = revealed,
+                            onReveal = onReveal,
+                            onReview = onReview,
+                        )
+                    }
+                }
+
+                is TodayStudyTask.NewWord -> NewWordTaskCard(
+                    word = task.word,
+                    remainingCount = task.remainingCount,
+                    onStart = { onStartWord(task.word) },
+                    onSkip = { onSkipWord(task.word) },
+                )
+
+                TodayStudyTask.ChoosePack -> PlainStateCard(
+                    title = "选择词库",
+                    body = "先选一个范围，今日任务会从这个词库里取词。",
+                    actionText = "去词库",
+                    onAction = onOpenPacks,
+                )
+
+                TodayStudyTask.Done -> PlainStateCard(
+                    title = "今日完成",
+                    body = "当前词库没有可安排的新词，也没有到期复习。",
+                    actionText = "查看词库",
+                    onAction = onOpenPacks,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TodaySummary(
+    dueReviewCount: Int,
+    todayWordCount: Int,
+    selectedPackLabel: String?,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "今日任务",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SummaryMetric(
+                    label = "到期复习",
+                    value = dueReviewCount.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                SummaryMetric(
+                    label = "新词",
+                    value = todayWordCount.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Text(
+                text = selectedPackLabel ?: "未选择词库",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummaryMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun NewWordTaskCard(
+    word: String,
+    remainingCount: Int,
+    onStart: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            WordStatusLabel(text = "今日新词 · $remainingCount 个")
+            Text(
+                text = word,
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onStart,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("学习这个词")
+                }
+                OutlinedButton(onClick = onSkip) {
+                    Text("跳过")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlainStateCard(
+    title: String,
+    body: String,
+    actionText: String,
+    onAction: () -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(onClick = onAction) {
+                Text(actionText)
+            }
+        }
     }
 }
 
 @Composable
 private fun VocabularySection(
     packs: List<VocabularyPack>,
-    todayWords: List<String>,
     skippedWords: List<String>,
     selectedWords: List<String>,
+    selectedPackLabel: String?,
     onPackSelected: (VocabularyPack) -> Unit,
-    onStartWord: (String) -> Unit,
-    onSkipWord: (String) -> Unit,
     onRestoreSkippedWord: (String) -> Unit,
 ) {
-    val unavailableWords = (todayWords + skippedWords).toSet()
-    val remainingWords = selectedWords.filterNot { it in unavailableWords }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        item {
+            Text(
+                text = "词库管理",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
         items(packs, key = { it.stage.name }) { pack ->
             VocabularyPackItem(
                 pack = pack,
+                selected = "${pack.stage.label}词库" == selectedPackLabel,
                 onClick = { onPackSelected(pack) },
             )
         }
 
-        if (todayWords.isNotEmpty()) {
-            item {
-                Text(
-                    text = "今日学习 · ${todayWords.size} 个",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            items(todayWords, key = { "today:$it" }) { word ->
-                TodayWordItem(
-                    word = word,
-                    onStart = { onStartWord(word) },
-                    onSkip = { onSkipWord(word) },
-                )
-            }
+        item {
+            SelectedPackSummary(
+                selectedPackLabel = selectedPackLabel,
+                availableCount = selectedWords.size,
+            )
         }
 
         if (skippedWords.isNotEmpty()) {
@@ -184,63 +383,36 @@ private fun VocabularySection(
                 )
             }
         }
-
-        if (remainingWords.isNotEmpty()) {
-            item {
-                Text(
-                    text = "未学词",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            items(remainingWords, key = { "word:$it" }) { word ->
-                OutlinedButton(
-                    onClick = { onStartWord(word) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(word)
-                }
-            }
-        }
     }
 }
 
 @Composable
-private fun TodayWordItem(
-    word: String,
-    onStart: () -> Unit,
-    onSkip: () -> Unit,
+private fun SelectedPackSummary(
+    selectedPackLabel: String?,
+    availableCount: Int,
 ) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = word,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                WordStatusLabel(text = "待学习")
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onStart) {
-                    Text("开始学习")
-                }
-                OutlinedButton(onClick = onSkip) {
-                    Text("跳过")
-                }
-            }
+            Text(
+                text = "当前范围",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = selectedPackLabel ?: "未选择词库",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "可安排 $availableCount 个",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -291,6 +463,7 @@ private fun WordStatusLabel(text: String) {
 @Composable
 private fun VocabularyPackItem(
     pack: VocabularyPack,
+    selected: Boolean,
     onClick: () -> Unit,
 ) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
@@ -302,11 +475,16 @@ private fun VocabularyPackItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "${pack.stage.label}词库",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "${pack.stage.label}词库",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    if (selected) {
+                        WordStatusLabel(text = "当前")
+                    }
+                }
                 Text(
                     text = "${pack.learnedCount} / ${pack.totalCount}",
                     style = MaterialTheme.typography.bodySmall,
@@ -314,7 +492,7 @@ private fun VocabularyPackItem(
                 )
             }
             OutlinedButton(onClick = onClick) {
-                Text("查看")
+                Text(if (selected) "已选" else "选择")
             }
         }
     }
@@ -330,9 +508,7 @@ private fun StudyCardContent(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -346,7 +522,7 @@ private fun StudyCardContent(
                 card = studyCard.card,
                 isFavorite = studyCard.entity.isFavorite,
                 userNote = studyCard.entity.userNote,
-                modifier = Modifier.weight(1f),
+                scrollable = false,
             )
         } else {
             ElevatedCard(modifier = Modifier.fillMaxWidth()) {

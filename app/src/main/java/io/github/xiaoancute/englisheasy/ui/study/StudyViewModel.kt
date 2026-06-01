@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.xiaoancute.englisheasy.data.learning.LearningPlanner
+import io.github.xiaoancute.englisheasy.data.learning.TodayStudyTask
 import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
@@ -15,6 +16,7 @@ import io.github.xiaoancute.englisheasy.data.vocabulary.VocabularyRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -36,9 +38,12 @@ class StudyViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val selectedPackWords = MutableStateFlow(emptyList<String>())
+    private val selectedPackLabelValue = MutableStateFlow<String?>(null)
     private val learningWords = wordLearningStateRepository.observeLearningWords()
     private val reviewWords = wordLearningStateRepository.observeReviewWords()
     private val blockedWords = wordLearningStateRepository.observeBlockedWords()
+
+    val selectedPackLabel: StateFlow<String?> = selectedPackLabelValue.asStateFlow()
 
     val dueCards: StateFlow<List<StudyCard>> = combine(
         dao.getDueReviews(System.currentTimeMillis()),
@@ -112,7 +117,43 @@ class StudyViewModel @Inject constructor(
         initialValue = emptyList(),
     )
 
+    val todayTask: StateFlow<TodayStudyTask> = combine(
+        dueCards,
+        todayWords,
+        selectedPackLabel,
+    ) { due, words, packLabel ->
+        LearningPlanner.todayTask(
+            dueReviewCount = due.size,
+            todayWords = words,
+            hasSelectedPack = packLabel != null,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = TodayStudyTask.ChoosePack,
+    )
+
+    init {
+        viewModelScope.launch {
+            vocabularyPacks.collect { packs ->
+                val currentLabel = selectedPackLabelValue.value
+                val selectedStillExists = currentLabel != null &&
+                    packs.any { pack -> packLabel(pack) == currentLabel }
+
+                when {
+                    packs.isEmpty() -> {
+                        selectedPackLabelValue.value = null
+                        selectedPackWords.value = emptyList()
+                    }
+
+                    !selectedStillExists -> selectPack(packs.first())
+                }
+            }
+        }
+    }
+
     fun selectPack(pack: VocabularyPack) {
+        selectedPackLabelValue.value = packLabel(pack)
         selectedPackWords.value = pack.entries.map { it.word }
     }
 
@@ -161,6 +202,10 @@ class StudyViewModel @Inject constructor(
             .trim()
             .lowercase()
             .replace(Regex("\\s+"), " ")
+    }
+
+    private fun packLabel(pack: VocabularyPack): String {
+        return "${pack.stage.label}词库"
     }
 
     private companion object {

@@ -37,4 +37,48 @@ class LearningPlannerTest {
 
         assertEquals(listOf("red apple"), result)
     }
+
+    @Test
+    fun todayTaskPrioritizesDueReviewsOverNewWords() {
+        val result = LearningPlanner.todayTask(
+            dueReviewCount = 3,
+            todayWords = listOf("spring", "run"),
+            hasSelectedPack = true,
+        )
+
+        assertEquals(TodayStudyTask.Review(dueReviewCount = 3), result)
+    }
+
+    @Test
+    fun todayTaskPicksOneNewWordWhenNoReviewIsDue() {
+        val result = LearningPlanner.todayTask(
+            dueReviewCount = 0,
+            todayWords = listOf(" Spring ", "run"),
+            hasSelectedPack = true,
+        )
+
+        assertEquals(TodayStudyTask.NewWord(word = "spring", remainingCount = 2), result)
+    }
+
+    @Test
+    fun todayTaskAsksForPackWhenNoPackIsSelected() {
+        val result = LearningPlanner.todayTask(
+            dueReviewCount = 0,
+            todayWords = emptyList(),
+            hasSelectedPack = false,
+        )
+
+        assertEquals(TodayStudyTask.ChoosePack, result)
+    }
+
+    @Test
+    fun todayTaskIsDoneWhenPackHasNoAvailableWords() {
+        val result = LearningPlanner.todayTask(
+            dueReviewCount = 0,
+            todayWords = emptyList(),
+            hasSelectedPack = true,
+        )
+
+        assertEquals(TodayStudyTask.Done, result)
+    }
 }
