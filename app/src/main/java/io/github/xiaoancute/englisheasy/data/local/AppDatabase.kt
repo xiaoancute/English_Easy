@@ -4,10 +4,11 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [ConceptCardEntity::class],
-    version = 4,
+    entities = [ConceptCardEntity::class, WordLearningStateEntity::class],
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun conceptCardDao(): ConceptCardDao
+    abstract fun wordLearningStateDao(): WordLearningStateDao
 }

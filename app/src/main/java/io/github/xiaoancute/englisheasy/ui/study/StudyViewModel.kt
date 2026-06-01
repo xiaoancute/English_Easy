@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.xiaoancute.englisheasy.data.learning.LearningPlanner
+import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
@@ -30,27 +31,35 @@ data class StudyCard(
 class StudyViewModel @Inject constructor(
     private val dao: ConceptCardDao,
     private val json: Json,
+    private val wordLearningStateRepository: WordLearningStateRepository,
     vocabularyRepository: VocabularyRepository,
 ) : ViewModel() {
 
     private val selectedPackWords = MutableStateFlow(emptyList<String>())
+    private val learningWords = wordLearningStateRepository.observeLearningWords()
+    private val reviewWords = wordLearningStateRepository.observeReviewWords()
+    private val blockedWords = wordLearningStateRepository.observeBlockedWords()
 
-    val dueCards: StateFlow<List<StudyCard>> = dao.getDueReviews(System.currentTimeMillis())
-        .map { entities ->
-            entities.map { entity ->
+    val dueCards: StateFlow<List<StudyCard>> = combine(
+        dao.getDueReviews(System.currentTimeMillis()),
+        reviewWords,
+    ) { entities, review ->
+        val reviewSet = review.map(::normalizeWord).toSet()
+        entities
+            .filter { entity -> normalizeWord(entity.word) in reviewSet }
+            .map { entity ->
                 StudyCard(
                     entity = entity,
                     card = runCatching { entity.toCard(json) }.getOrNull(),
                 )
             }
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
-        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
 
-    val vocabularyPacks: StateFlow<List<VocabularyPack>> = dao.observeLearnedWords()
+    val vocabularyPacks: StateFlow<List<VocabularyPack>> = learningWords
         .map { words -> vocabularyRepository.getPacks(words.toSet()) }
         .stateIn(
             scope = viewModelScope,
@@ -60,13 +69,13 @@ class StudyViewModel @Inject constructor(
 
     val selectedWords: StateFlow<List<String>> = combine(
         selectedPackWords,
-        dao.observeLearnedWords(),
-    ) { packWords, learnedWords ->
-        val learned = learnedWords.map(::normalizeWord).toSet()
+        blockedWords,
+    ) { packWords, blocked ->
+        val blockedSet = blocked.map(::normalizeWord).toSet()
         packWords
             .map(::normalizeWord)
             .distinct()
-            .filterNot { it in learned }
+            .filterNot { it in blockedSet }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -75,11 +84,11 @@ class StudyViewModel @Inject constructor(
 
     val todayWords: StateFlow<List<String>> = combine(
         selectedPackWords,
-        dao.observeLearnedWords(),
-    ) { packWords, learnedWords ->
+        blockedWords,
+    ) { packWords, blocked ->
         LearningPlanner.todayWords(
             words = packWords,
-            learnedWords = learnedWords.toSet(),
+            blockedWords = blocked.toSet(),
             limit = TODAY_WORD_LIMIT,
         )
     }.stateIn(
@@ -88,8 +97,41 @@ class StudyViewModel @Inject constructor(
         initialValue = emptyList(),
     )
 
+    val skippedWords: StateFlow<List<String>> = combine(
+        selectedPackWords,
+        wordLearningStateRepository.observeSkippedWords(),
+    ) { packWords, skipped ->
+        val skippedSet = skipped.map(::normalizeWord).toSet()
+        packWords
+            .map(::normalizeWord)
+            .distinct()
+            .filter { it in skippedSet }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
     fun selectPack(pack: VocabularyPack) {
         selectedPackWords.value = pack.entries.map { it.word }
+    }
+
+    fun startLearning(word: String) {
+        viewModelScope.launch {
+            wordLearningStateRepository.startLearning(word)
+        }
+    }
+
+    fun skipWord(word: String) {
+        viewModelScope.launch {
+            wordLearningStateRepository.skipWord(word)
+        }
+    }
+
+    fun restoreSkippedWord(word: String) {
+        viewModelScope.launch {
+            wordLearningStateRepository.restoreWord(word)
+        }
     }
 
     fun review(entity: ConceptCardEntity, grade: ReviewGrade) {
@@ -106,6 +148,11 @@ class StudyViewModel @Inject constructor(
                 reviewCount = next.reviewCount,
                 lastReviewedAt = next.lastReviewedAt,
             )
+            if (next.reviewStrength >= MASTERED_STRENGTH) {
+                wordLearningStateRepository.markMastered(entity.word)
+            } else {
+                wordLearningStateRepository.startLearning(entity.word)
+            }
         }
     }
 
@@ -118,5 +165,6 @@ class StudyViewModel @Inject constructor(
 
     private companion object {
         const val TODAY_WORD_LIMIT = 10
+        const val MASTERED_STRENGTH = 5
     }
 }

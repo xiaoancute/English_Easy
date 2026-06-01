@@ -49,7 +49,7 @@ object VocabularyCatalog {
         entries: List<VocabularyEntry>,
         learnedWords: Set<String>,
     ): List<VocabularyPack> {
-        val normalizedLearnedWords = learnedWords.map { it.trim().lowercase() }.toSet()
+        val normalizedLearnedWords = learnedWords.map(::normalizeWord).toSet()
         val grouped = entries.groupBy { it.stage }
         return stageOrder.mapNotNull { stage ->
             val stageEntries = grouped[stage].orEmpty().sortedBy { it.word }

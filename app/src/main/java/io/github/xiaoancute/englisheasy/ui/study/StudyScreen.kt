@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.review.ReviewGrade
@@ -46,6 +48,7 @@ fun StudyScreen(
     val vocabularyPacks by viewModel.vocabularyPacks.collectAsState()
     val selectedWords by viewModel.selectedWords.collectAsState()
     val todayWords by viewModel.todayWords.collectAsState()
+    val skippedWords by viewModel.skippedWords.collectAsState()
     val current = dueCards.firstOrNull()
     var revealedWord by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableStateOf(0) }
@@ -92,9 +95,15 @@ fun StudyScreen(
                 VocabularySection(
                     packs = vocabularyPacks,
                     todayWords = todayWords,
+                    skippedWords = skippedWords,
                     selectedWords = selectedWords,
                     onPackSelected = viewModel::selectPack,
-                    onWordClick = onWordClick,
+                    onStartWord = { word ->
+                        viewModel.startLearning(word)
+                        onWordClick(word)
+                    },
+                    onSkipWord = viewModel::skipWord,
+                    onRestoreSkippedWord = viewModel::restoreSkippedWord,
                 )
             }
         }
@@ -119,11 +128,15 @@ private fun EmptyStudyState(modifier: Modifier = Modifier) {
 private fun VocabularySection(
     packs: List<VocabularyPack>,
     todayWords: List<String>,
+    skippedWords: List<String>,
     selectedWords: List<String>,
     onPackSelected: (VocabularyPack) -> Unit,
-    onWordClick: (String) -> Unit,
+    onStartWord: (String) -> Unit,
+    onSkipWord: (String) -> Unit,
+    onRestoreSkippedWord: (String) -> Unit,
 ) {
-    val remainingWords = selectedWords.filterNot { it in todayWords }
+    val unavailableWords = (todayWords + skippedWords).toSet()
+    val remainingWords = selectedWords.filterNot { it in unavailableWords }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -147,12 +160,28 @@ private fun VocabularySection(
                 )
             }
             items(todayWords, key = { "today:$it" }) { word ->
-                Button(
-                    onClick = { onWordClick(word) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(word)
-                }
+                TodayWordItem(
+                    word = word,
+                    onStart = { onStartWord(word) },
+                    onSkip = { onSkipWord(word) },
+                )
+            }
+        }
+
+        if (skippedWords.isNotEmpty()) {
+            item {
+                Text(
+                    text = "已跳过 · ${skippedWords.size} 个",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            items(skippedWords, key = { "skipped:$it" }) { word ->
+                SkippedWordItem(
+                    word = word,
+                    onRestore = { onRestoreSkippedWord(word) },
+                )
             }
         }
 
@@ -167,13 +196,95 @@ private fun VocabularySection(
             }
             items(remainingWords, key = { "word:$it" }) { word ->
                 OutlinedButton(
-                    onClick = { onWordClick(word) },
+                    onClick = { onStartWord(word) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(word)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TodayWordItem(
+    word: String,
+    onStart: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = word,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                WordStatusLabel(text = "待学习")
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onStart) {
+                    Text("开始学习")
+                }
+                OutlinedButton(onClick = onSkip) {
+                    Text("跳过")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkippedWordItem(
+    word: String,
+    onRestore: () -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = word,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            OutlinedButton(onClick = onRestore) {
+                Text("恢复")
+            }
+        }
+    }
+}
+
+@Composable
+private fun WordStatusLabel(text: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+        )
     }
 }
 

@@ -52,6 +52,21 @@ class VocabularyCatalogTest {
     }
 
     @Test
+    fun countsLearnedPhrasesAfterNormalizingSpaces() {
+        val entries = listOf(
+            VocabularyEntry("take a break", VocabularyStage.GAOKAO, "sample"),
+            VocabularyEntry("break the ice", VocabularyStage.GAOKAO, "sample"),
+        )
+
+        val packs = VocabularyCatalog.groupByStage(
+            entries = entries,
+            learnedWords = setOf(" TAKE   A   BREAK "),
+        )
+
+        assertEquals(1, packs.single().learnedCount)
+    }
+
+    @Test
     fun bundledStudentVocabularyUsesExpandedLicensedSources() {
         val entries = VocabularyCatalog.decode(vocabularyAssetPath().toFile().readText())
 

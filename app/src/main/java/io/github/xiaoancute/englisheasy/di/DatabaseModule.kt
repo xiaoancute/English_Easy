@@ -11,6 +11,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.xiaoancute.englisheasy.data.local.AppDatabase
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
+import io.github.xiaoancute.englisheasy.data.local.WordLearningStateDao
 import javax.inject.Singleton
 
 @Module
@@ -53,6 +54,27 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS word_learning_states (
+                    word TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    updatedAt INTEGER NOT NULL,
+                    PRIMARY KEY(word)
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO word_learning_states (word, state, updatedAt)
+                SELECT word, 'LEARNING', queriedAt FROM concept_cards
+                """.trimIndent()
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -60,10 +82,19 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "english_easy.db"
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
+        ).addMigrations(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+        ).build()
     }
 
     @Provides
     @Singleton
     fun provideConceptCardDao(db: AppDatabase): ConceptCardDao = db.conceptCardDao()
+
+    @Provides
+    @Singleton
+    fun provideWordLearningStateDao(db: AppDatabase): WordLearningStateDao = db.wordLearningStateDao()
 }
