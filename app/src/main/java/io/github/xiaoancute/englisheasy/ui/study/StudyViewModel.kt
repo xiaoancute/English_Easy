@@ -3,6 +3,7 @@ package io.github.xiaoancute.englisheasy.ui.study
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.xiaoancute.englisheasy.data.learning.LearningDashboard
 import io.github.xiaoancute.englisheasy.data.learning.LearningPlanner
 import io.github.xiaoancute.englisheasy.data.learning.TodayStudyTask
 import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
@@ -72,6 +73,17 @@ class StudyViewModel @Inject constructor(
             initialValue = emptyList(),
         )
 
+    private val selectedPack: StateFlow<VocabularyPack?> = combine(
+        vocabularyPacks,
+        selectedPackLabel,
+    ) { packs, label ->
+        packs.firstOrNull { pack -> packLabel(pack) == label }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = null,
+    )
+
     val selectedWords: StateFlow<List<String>> = combine(
         selectedPackWords,
         blockedWords,
@@ -131,6 +143,32 @@ class StudyViewModel @Inject constructor(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = TodayStudyTask.ChoosePack,
+    )
+
+    val dashboard: StateFlow<LearningDashboard> = combine(
+        selectedPack,
+        selectedWords,
+        skippedWords,
+        dueCards,
+        todayWords,
+    ) { pack, available, skipped, due, today ->
+        LearningDashboard.from(
+            selectedPack = pack,
+            availableWords = available,
+            skippedWords = skipped,
+            dueReviewCount = due.size,
+            todayWordCount = today.size,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = LearningDashboard.from(
+            selectedPack = null,
+            availableWords = emptyList(),
+            skippedWords = emptyList(),
+            dueReviewCount = 0,
+            todayWordCount = 0,
+        ),
     )
 
     init {
