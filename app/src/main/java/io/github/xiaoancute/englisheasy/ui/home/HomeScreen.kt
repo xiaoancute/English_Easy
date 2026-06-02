@@ -12,19 +12,23 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -62,6 +66,13 @@ fun HomeScreen(
     var input by remember { mutableStateOf("") }
     val keyboard = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+    fun performLookup(query: String = input) {
+        val normalized = query.trim()
+        if (normalized.isBlank()) return
+        input = normalized
+        viewModel.lookup(normalized)
+        keyboard?.hide()
+    }
 
     // 从历史页跳转过来时自动查询
     if (initialWord != null && input != initialWord) {
@@ -82,38 +93,19 @@ fun HomeScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it },
-                placeholder = { Text("输入单词或短语，例：spring / break the ice") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(1f),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.None,
-                    imeAction = ImeAction.Search,
-                ),
-                keyboardActions = KeyboardActions(
-                    onSearch = {
-                        viewModel.lookup(input)
-                        keyboard?.hide()
-                    },
-                ),
-                trailingIcon = {
-                    IconButton(onClick = {
-                        viewModel.lookup(input)
-                        keyboard?.hide()
-                    }) {
-                        Icon(Icons.Default.Search, contentDescription = "查询")
-                    }
-                },
+            LookupPanel(
+                input = input,
+                onInputChange = { input = it },
+                onLookup = { performLookup() },
             )
 
             ResultArea(
                 state = state,
                 isConfigured = isConfigured,
+                onExampleLookup = { performLookup(it) },
                 onFavoriteChange = viewModel::setFavorite,
                 onNoteChange = viewModel::setNote,
                 onExampleChange = viewModel::setExample,
@@ -126,9 +118,70 @@ fun HomeScreen(
 }
 
 @Composable
+private fun LookupPanel(
+    input: String,
+    onInputChange: (String) -> Unit,
+    onLookup: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "概念还原",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "查单词、短语和固定搭配",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            OutlinedTextField(
+                value = input,
+                onValueChange = onInputChange,
+                placeholder = { Text("spring / break the ice") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    imeAction = ImeAction.Search,
+                ),
+                keyboardActions = KeyboardActions(
+                    onSearch = { onLookup() },
+                ),
+            )
+
+            Button(
+                onClick = onLookup,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("查询")
+            }
+        }
+    }
+}
+
+@Composable
 private fun ResultArea(
     state: HomeUiState,
     isConfigured: Boolean,
+    onExampleLookup: (String) -> Unit,
     onFavoriteChange: (Boolean) -> Unit,
     onNoteChange: (String) -> Unit,
     onExampleChange: (String) -> Unit,
@@ -137,7 +190,11 @@ private fun ResultArea(
     onCopy: (ConceptCard, String, String) -> Unit,
 ) {
     when (state) {
-        HomeUiState.Idle -> if (isConfigured) IdleHint() else SetupGuide()
+        HomeUiState.Idle -> if (isConfigured) {
+            IdleHint(onExampleLookup = onExampleLookup)
+        } else {
+            SetupGuide()
+        }
         HomeUiState.Loading -> LoadingIndicator()
         is HomeUiState.Success -> ConceptCardView(
             card = state.card,
@@ -185,17 +242,48 @@ private fun copyCard(
 }
 
 @Composable
-private fun IdleHint() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+private fun IdleHint(
+    onExampleLookup: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = "把英文词在母语者大脑里的样子，重新呈现给你",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            text = "试几个典型输入",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ExampleChip(text = "spring", onClick = onExampleLookup)
+            ExampleChip(text = "break the ice", onClick = onExampleLookup)
+            ExampleChip(text = "red apple", onClick = onExampleLookup)
+        }
+        Text(
+            text = "结果会在这里显示为概念卡。历史、收藏和笔记仍保存在本机。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+@Composable
+private fun ExampleChip(
+    text: String,
+    onClick: (String) -> Unit,
+) {
+    AssistChip(
+        onClick = { onClick(text) },
+        label = { Text(text) },
+    )
 }
 
 @Composable
@@ -203,41 +291,34 @@ private fun SetupGuide() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp),
-        contentAlignment = Alignment.Center,
+            .padding(top = 8.dp),
+        contentAlignment = Alignment.TopCenter,
     ) {
         Card(
+            modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
             ),
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "先连上你的 AI",
+                    text = "需要先配置 AI 服务",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "英易本身不含 AI，需要你填入自己的大模型 API Key（BYOK）。" +
-                        "Key 会用系统加密后只存在本机，查词请求直接发往你配置的端点。",
+                    text = "在底部「设置」里填入 Base URL、模型和 API Key 后即可查词。Key 只保存在本机。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                 )
                 Text(
-                    text = "支持 OpenAI / DeepSeek / Moonshot / 智谱 / Groq / 本地 Ollama 等任意 OpenAI 兼容端点。" +
-                        "在对应平台官网注册即可获取 Key。",
+                    text = "支持 OpenAI 兼容端点，例如 DeepSeek、Moonshot、智谱、Groq 或本地 Ollama。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                )
-                Text(
-                    text = "👉 点击底部「设置」tab 填入配置",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
