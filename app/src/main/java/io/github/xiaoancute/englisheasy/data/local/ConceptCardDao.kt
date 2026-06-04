@@ -26,6 +26,15 @@ interface ConceptCardDao {
     @Query("SELECT * FROM concept_cards WHERE reviewDueAt <= :now ORDER BY reviewDueAt ASC, queriedAt DESC")
     fun getDueReviews(now: Long): Flow<List<ConceptCardEntity>>
 
+    @Query(
+        """
+        SELECT word FROM concept_cards
+        WHERE reviewCount > 0 AND reviewStrength < :maxStrength
+        ORDER BY lastReviewedAt DESC, queriedAt DESC
+        """
+    )
+    fun observeWeakWords(maxStrength: Int): Flow<List<String>>
+
     @Query("SELECT isFavorite FROM concept_cards WHERE word = :word LIMIT 1")
     fun observeFavorite(word: String): Flow<Boolean?>
 

@@ -19,6 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +51,7 @@ fun StudyScreen(
     val dueCards by viewModel.dueCards.collectAsState()
     val vocabularyPacks by viewModel.vocabularyPacks.collectAsState()
     val skippedWords by viewModel.skippedWords.collectAsState()
+    val weakWords by viewModel.weakWords.collectAsState()
     val todayTask by viewModel.todayTask.collectAsState()
     val current = dueCards.firstOrNull()
     var revealedWord by remember { mutableStateOf<String?>(null) }
@@ -85,6 +87,7 @@ fun StudyScreen(
                 TodaySection(
                     task = todayTask,
                     dashboard = dashboard,
+                    weakWords = weakWords,
                     currentReview = current,
                     revealed = current != null && revealedWord == current.entity.word,
                     onReveal = { current?.let { revealedWord = it.entity.word } },
@@ -93,6 +96,7 @@ fun StudyScreen(
                         viewModel.startLearning(word)
                         onWordClick(word)
                     },
+                    onWeakWordClick = onWordClick,
                     onSkipWord = viewModel::skipWord,
                     onOpenPacks = { selectedTab = 1 },
                 )
@@ -113,11 +117,13 @@ fun StudyScreen(
 private fun TodaySection(
     task: TodayStudyTask,
     dashboard: LearningDashboard,
+    weakWords: List<String>,
     currentReview: StudyCard?,
     revealed: Boolean,
     onReveal: () -> Unit,
     onReview: (ReviewGrade) -> Unit,
     onStartWord: (String) -> Unit,
+    onWeakWordClick: (String) -> Unit,
     onSkipWord: (String) -> Unit,
     onOpenPacks: () -> Unit,
 ) {
@@ -133,6 +139,15 @@ private fun TodaySection(
                 task = task,
                 onOpenPacks = onOpenPacks,
             )
+        }
+
+        if (weakWords.isNotEmpty()) {
+            item {
+                WeakWordsCard(
+                    words = weakWords,
+                    onWordClick = onWeakWordClick,
+                )
+            }
         }
 
         item {
@@ -296,6 +311,80 @@ private fun LearningOverviewCard(
                     value = dashboard.skippedCount.toString(),
                     modifier = Modifier.weight(1f),
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeakWordsCard(
+    words: List<String>,
+    onWordClick: (String) -> Unit,
+) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "薄弱词",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "${words.size} 个需要多看几眼",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            words.take(WEAK_WORD_PREVIEW_LIMIT).forEach { word ->
+                WeakWordRow(
+                    word = word,
+                    onClick = { onWordClick(word) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeakWordRow(
+    word: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = word,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            TextButton(onClick = onClick) {
+                Text("查看")
             }
         }
     }
@@ -613,6 +702,8 @@ private fun packProgressFraction(pack: VocabularyPack): Float {
     if (pack.totalCount <= 0) return 0f
     return (pack.learnedCount.toFloat() / pack.totalCount.toFloat()).coerceIn(0f, 1f)
 }
+
+private const val WEAK_WORD_PREVIEW_LIMIT = 5
 
 @Composable
 private fun StudyCardContent(

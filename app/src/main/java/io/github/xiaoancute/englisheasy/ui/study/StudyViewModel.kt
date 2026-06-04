@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.xiaoancute.englisheasy.data.learning.LearningDashboard
 import io.github.xiaoancute.englisheasy.data.learning.LearningPlanner
 import io.github.xiaoancute.englisheasy.data.learning.TodayStudyTask
+import io.github.xiaoancute.englisheasy.data.learning.WeakWordPolicy
 import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
@@ -123,6 +124,24 @@ class StudyViewModel @Inject constructor(
             .map(::normalizeWord)
             .distinct()
             .filter { it in skippedSet }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    val weakWords: StateFlow<List<String>> = combine(
+        selectedPackWords,
+        dao.observeWeakWords(WeakWordPolicy.STRENGTH_THRESHOLD),
+        reviewWords,
+    ) { packWords, weak, review ->
+        val packSet = packWords.map(::normalizeWord).toSet()
+        val reviewSet = review.map(::normalizeWord).toSet()
+        weak
+            .map(::normalizeWord)
+            .distinct()
+            .filter { word -> word in reviewSet }
+            .filter { word -> packSet.isEmpty() || word in packSet }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
