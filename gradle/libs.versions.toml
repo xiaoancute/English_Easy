@@ -27,6 +27,7 @@ retrofit-kotlinx-converter = "1.0.0"
 # Coroutines / Serialization
 coroutines = "1.9.0"
 serialization = "1.7.3"
+mockk = "1.13.13"
 
 [libraries]
 # AndroidX core
@@ -65,7 +66,11 @@ retrofit-kotlinx-serialization-converter = { group = "com.jakewharton.retrofit",
 
 # Coroutines & Serialization
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
+
+# Tests
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
