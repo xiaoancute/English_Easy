@@ -15,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -41,7 +40,7 @@ class HomeViewModelLookupLearningTest {
     fun studyLookupFailureDoesNotStartLearning() = runHomeViewModelTest {
         val fixture = Fixture()
         coEvery {
-            fixture.repo.lookup("spring", forceRefresh = false)
+            fixture.repo.lookup("Spring", forceRefresh = false)
         } returns Result.failure(IllegalStateException("network failed"))
         val viewModel = fixture.viewModel()
 
@@ -88,7 +87,7 @@ class HomeViewModelLookupLearningTest {
                     model = "test-model",
                 )
             )
-            coEvery { repo.lookup("spring", forceRefresh = false) } returns Result.success(card)
+            coEvery { repo.lookup("Spring", forceRefresh = false) } returns Result.success(card)
             every { repo.observeFavorite("spring") } returns flowOf(false)
             every { repo.observeNote("spring") } returns flowOf("")
             every { repo.observeExample("spring") } returns flowOf("")
@@ -104,14 +103,12 @@ class HomeViewModelLookupLearningTest {
     }
 
     private fun runHomeViewModelTest(
-        dispatcher: TestDispatcher = StandardTestDispatcher(),
         testBody: suspend TestScope.() -> Unit,
-    ) {
+    ) = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
-            runTest(dispatcher) {
-                testBody()
-            }
+            testBody()
         } finally {
             Dispatchers.resetMain()
         }
