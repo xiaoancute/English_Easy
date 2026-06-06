@@ -24,15 +24,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,7 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -53,6 +53,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
 import io.github.xiaoancute.englisheasy.data.model.toShareText
 import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
+import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
+import io.github.xiaoancute.englisheasy.ui.components.QuietSurface
+import io.github.xiaoancute.englisheasy.ui.components.SectionHeader
+import io.github.xiaoancute.englisheasy.ui.components.StatePanel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +72,9 @@ fun HomeScreen(
     var input by remember { mutableStateOf("") }
     val keyboard = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    var pendingStudyLookupWord by remember { mutableStateOf<String?>(null) }
+
     fun performLookup(query: String = input) {
         val normalized = query.trim()
         if (normalized.isBlank()) return
@@ -80,11 +87,27 @@ fun HomeScreen(
     LaunchedEffect(initialWord, markLearningOnSuccess) {
         if (initialWord != null) {
             input = initialWord
+            pendingStudyLookupWord = if (markLearningOnSuccess) initialWord else null
             viewModel.lookup(
                 word = initialWord,
                 markLearningOnSuccess = markLearningOnSuccess,
             )
             onWordConsumed()
+        }
+    }
+
+    LaunchedEffect(state, pendingStudyLookupWord) {
+        val word = pendingStudyLookupWord ?: return@LaunchedEffect
+        when (state) {
+            is HomeUiState.Success -> {
+                snackbarHostState.showSnackbar("已加入学习中：${state.card.word}")
+                pendingStudyLookupWord = null
+            }
+            is HomeUiState.Error -> {
+                snackbarHostState.showSnackbar("查询失败，未加入学习进度：$word")
+                pendingStudyLookupWord = null
+            }
+            HomeUiState.Idle, HomeUiState.Loading -> Unit
         }
     }
 
@@ -95,13 +118,17 @@ fun HomeScreen(
                 title = { Text("英易 English Easy") },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(
+                    horizontal = EnglishEasySpacing.PageHorizontal,
+                    vertical = EnglishEasySpacing.PageVertical,
+                ),
+            verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
         ) {
             LookupPanel(
                 input = input,
@@ -119,6 +146,7 @@ fun HomeScreen(
                 onRefresh = viewModel::refreshCurrent,
                 onShare = { card, note, example -> shareCard(context, card, note, example) },
                 onCopy = { card, note, example -> copyCard(context, card, note, example) },
+                onRetry = { performLookup() },
             )
         }
     }
@@ -130,56 +158,35 @@ private fun LookupPanel(
     onInputChange: (String) -> Unit,
     onLookup: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-        ),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    QuietSurface(tonal = true) {
+        SectionHeader(
+            title = "概念还原",
+            subtitle = "查单词、短语和固定搭配",
+        )
+
+        OutlinedTextField(
+            value = input,
+            onValueChange = onInputChange,
+            placeholder = { Text("spring / break the ice") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = null)
+            },
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                imeAction = ImeAction.Search,
+            ),
+            keyboardActions = KeyboardActions(
+                onSearch = { onLookup() },
+            ),
+        )
+
+        Button(
+            onClick = onLookup,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "概念还原",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = "查单词、短语和固定搭配",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            OutlinedTextField(
-                value = input,
-                onValueChange = onInputChange,
-                placeholder = { Text("spring / break the ice") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                },
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.None,
-                    imeAction = ImeAction.Search,
-                ),
-                keyboardActions = KeyboardActions(
-                    onSearch = { onLookup() },
-                ),
-            )
-
-            Button(
-                onClick = onLookup,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("查询")
-            }
+            Text("查询")
         }
     }
 }
@@ -195,6 +202,7 @@ private fun ResultArea(
     onRefresh: () -> Unit,
     onShare: (ConceptCard, String, String) -> Unit,
     onCopy: (ConceptCard, String, String) -> Unit,
+    onRetry: () -> Unit,
 ) {
     when (state) {
         HomeUiState.Idle -> if (isConfigured) {
@@ -215,7 +223,7 @@ private fun ResultArea(
             userExample = state.userExample,
             onExampleChange = onExampleChange,
         )
-        is HomeUiState.Error -> ErrorView(message = state.message)
+        is HomeUiState.Error -> ErrorView(message = state.message, onRetry = onRetry)
     }
 }
 
@@ -252,17 +260,10 @@ private fun copyCard(
 private fun IdleHint(
     onExampleLookup: (String) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            text = "试几个典型输入",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
+    QuietSurface(tonal = false) {
+        SectionHeader(
+            title = "试几个典型输入",
+            subtitle = "结果会显示为概念卡，历史、收藏和笔记保存在本机。",
         )
         Row(
             modifier = Modifier
@@ -274,11 +275,6 @@ private fun IdleHint(
             ExampleChip(text = "break the ice", onClick = onExampleLookup)
             ExampleChip(text = "red apple", onClick = onExampleLookup)
         }
-        Text(
-            text = "结果会在这里显示为概念卡。历史、收藏和笔记仍保存在本机。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -295,41 +291,10 @@ private fun ExampleChip(
 
 @Composable
 private fun SetupGuide() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 8.dp),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = "需要先配置 AI 服务",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = "在底部「设置」里填入 Base URL、模型和 API Key 后即可查词。Key 只保存在本机。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                )
-                Text(
-                    text = "支持 OpenAI 兼容端点，例如 DeepSeek、Moonshot、智谱、Groq 或本地 Ollama。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                )
-            }
-        }
-    }
+    StatePanel(
+        title = "需要先配置 AI 服务",
+        body = "在底部「设置」里填入 Base URL、模型和 API Key 后即可查词。Key 只保存在本机。",
+    )
 }
 
 @Composable
@@ -364,42 +329,31 @@ private fun LoadingIndicator() {
 }
 
 @Composable
-private fun ErrorView(message: String) {
+private fun ErrorView(
+    message: String,
+    onRetry: () -> Unit,
+) {
     val (title, hint) = when {
-        message.contains("请先在设置里填入") -> "未配置 API" to "点击底部「设置」tab，填入你的 API Key"
-        message.contains("401") || message.contains("Unauthorized") -> "API Key 无效" to "请检查设置里的 API Key 是否正确"
+        message.contains("请先在设置里填入") -> "未配置 API" to "点击底部「设置」tab，填入你的 API Key。"
+        message.contains("401") || message.contains("Unauthorized") -> "API Key 无效" to "请检查设置里的 API Key 是否正确。"
         message.contains("403") || message.contains("权限不足") -> "权限不足" to message
         message.contains("404") || message.contains("不存在") -> "配置有误" to message
         message.contains("429") || message.contains("额度受限") -> "请求受限" to message
         message.contains("timeout") ||
             message.contains("Unable to resolve host") ||
             message.contains("网络连接失败") ||
-            message.contains("请求超时") -> "网络连接失败" to "请检查网络连接或 Base URL 是否正确"
-        message.contains("JSON") || message.contains("响应") || message.contains("解析失败") -> "解析失败" to "LLM 响应格式异常，请稍后重试"
+            message.contains("请求超时") -> "网络连接失败" to "请检查网络连接或 Base URL 是否正确。"
+        message.contains("JSON") || message.contains("响应") || message.contains("解析失败") -> "解析失败" to "LLM 响应格式异常，请稍后重试。"
         else -> "出错了" to message
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.error,
-            )
-            Text(
-                text = hint,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
-        }
-    }
+    StatePanel(
+        title = title,
+        body = hint,
+        action = {
+            TextButton(onClick = onRetry) {
+                Text("重试")
+            }
+        },
+    )
 }
