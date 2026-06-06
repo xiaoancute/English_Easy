@@ -35,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,7 @@ import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 fun HomeScreen(
     modifier: Modifier = Modifier,
     initialWord: String? = null,
+    markLearningOnSuccess: Boolean = false,
     onWordConsumed: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -74,11 +76,16 @@ fun HomeScreen(
         keyboard?.hide()
     }
 
-    // 从历史页跳转过来时自动查询
-    if (initialWord != null && input != initialWord) {
-        input = initialWord
-        viewModel.lookup(initialWord)
-        onWordConsumed()
+    // 从其他页跳转过来时自动查询
+    LaunchedEffect(initialWord, markLearningOnSuccess) {
+        if (initialWord != null) {
+            input = initialWord
+            viewModel.lookup(
+                word = initialWord,
+                markLearningOnSuccess = markLearningOnSuccess,
+            )
+            onWordConsumed()
+        }
     }
 
     Scaffold(

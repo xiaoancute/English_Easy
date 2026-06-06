@@ -44,6 +44,7 @@ import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 @Composable
 fun StudyScreen(
     onWordClick: (String) -> Unit,
+    onStudyTaskWordClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: StudyViewModel = hiltViewModel(),
 ) {
@@ -93,8 +94,7 @@ fun StudyScreen(
                     onReveal = { current?.let { revealedWord = it.entity.word } },
                     onReview = { grade -> current?.let { viewModel.review(it.entity, grade) } },
                     onStartWord = { word ->
-                        viewModel.startLearning(word)
-                        onWordClick(word)
+                        onStudyTaskWordClick(word)
                     },
                     onWeakWordClick = onWordClick,
                     onSkipWord = viewModel::skipWord,

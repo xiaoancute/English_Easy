@@ -32,10 +32,10 @@ import io.github.xiaoancute.englisheasy.ui.study.StudyScreen
 @Composable
 fun AppRoot() {
     var selectedTab by remember { mutableIntStateOf(0) }
-    var pendingWordFromHistory by remember { mutableStateOf<String?>(null) }
+    var pendingLookup by remember { mutableStateOf<PendingLookup?>(null) }
 
-    // 历史页点击词条 → 跳转到 Home 并触发查询
-    if (pendingWordFromHistory != null) {
+    // 其他页点击词条 → 跳转到 Home 并触发查询
+    if (pendingLookup != null) {
         selectedTab = 0
     }
 
@@ -56,24 +56,28 @@ fun AppRoot() {
         when (selectedTab) {
             0 -> HomeScreen(
                 modifier = Modifier.padding(innerPadding),
-                initialWord = pendingWordFromHistory,
-                onWordConsumed = { pendingWordFromHistory = null },
+                initialWord = pendingLookup?.word,
+                markLearningOnSuccess = pendingLookup?.source == LookupSource.StudyTask,
+                onWordConsumed = { pendingLookup = null },
             )
             1 -> HistoryScreen(
                 onWordClick = { word ->
-                    pendingWordFromHistory = word
+                    pendingLookup = PendingLookup(word, LookupSource.Normal)
                 },
                 modifier = Modifier.padding(innerPadding),
             )
             2 -> FavoritesScreen(
                 onWordClick = { word ->
-                    pendingWordFromHistory = word
+                    pendingLookup = PendingLookup(word, LookupSource.Normal)
                 },
                 modifier = Modifier.padding(innerPadding),
             )
             3 -> StudyScreen(
                 onWordClick = { word ->
-                    pendingWordFromHistory = word
+                    pendingLookup = PendingLookup(word, LookupSource.Normal)
+                },
+                onStudyTaskWordClick = { word ->
+                    pendingLookup = PendingLookup(word, LookupSource.StudyTask)
                 },
                 modifier = Modifier.padding(innerPadding),
             )
@@ -90,4 +94,14 @@ private enum class BottomNavItem(val label: String, val icon: ImageVector) {
     FAVORITES("收藏", Icons.Default.Star),
     STUDY("学习", Icons.Default.School),
     SETTINGS("设置", Icons.Default.Settings),
+}
+
+private data class PendingLookup(
+    val word: String,
+    val source: LookupSource,
+)
+
+private enum class LookupSource {
+    Normal,
+    StudyTask,
 }
