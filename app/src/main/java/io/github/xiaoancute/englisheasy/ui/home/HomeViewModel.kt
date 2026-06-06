@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.xiaoancute.englisheasy.data.llm.ConceptRepository
+import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
 import io.github.xiaoancute.englisheasy.data.settings.SettingsRepository
 import kotlinx.coroutines.Job
@@ -32,6 +33,7 @@ sealed interface HomeUiState {
 class HomeViewModel @Inject constructor(
     private val repo: ConceptRepository,
     settings: SettingsRepository,
+    private val wordLearningStateRepository: WordLearningStateRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Idle)
@@ -45,7 +47,11 @@ class HomeViewModel @Inject constructor(
         .map { it.isUsable }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
-    fun lookup(word: String, forceRefresh: Boolean = false) {
+    fun lookup(
+        word: String,
+        forceRefresh: Boolean = false,
+        markLearningOnSuccess: Boolean = false,
+    ) {
         val trimmed = word.trim()
         if (trimmed.isEmpty()) return
         _state.value = HomeUiState.Loading
@@ -61,6 +67,9 @@ class HomeViewModel @Inject constructor(
                         userNote = "",
                         userExample = "",
                     )
+                    if (markLearningOnSuccess) {
+                        wordLearningStateRepository.startLearning(card.word)
+                    }
                     observeFavorite(card.word)
                     observeNote(card.word)
                     observeExample(card.word)

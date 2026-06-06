@@ -2,7 +2,6 @@ package io.github.xiaoancute.englisheasy.data.llm
 
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
-import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
 import io.github.xiaoancute.englisheasy.data.prompt.CURRENT_PROMPT_VERSION
 import io.github.xiaoancute.englisheasy.data.prompt.SYSTEM_PROMPT_V3
@@ -30,7 +29,6 @@ class ConceptRepository @Inject constructor(
     private val api: OpenAiCompatibleApi,
     private val settings: SettingsRepository,
     private val dao: ConceptCardDao,
-    private val wordLearningStateRepository: WordLearningStateRepository,
     private val json: Json,
 ) {
     fun observeFavorite(word: String): Flow<Boolean> {
@@ -52,7 +50,6 @@ class ConceptRepository @Inject constructor(
         // 1. 查缓存
         val cached = dao.get(normalized)
         if (!forceRefresh && cached != null && cached.promptVersion == CURRENT_PROMPT_VERSION) {
-            wordLearningStateRepository.startLearning(normalized)
             return@runCatching cached.toCard(json)
         }
 
@@ -75,7 +72,6 @@ class ConceptRepository @Inject constructor(
                 lastReviewedAt = cached?.lastReviewedAt ?: 0L,
             )
         )
-        wordLearningStateRepository.startLearning(normalized)
         card
     }.recoverCatching {
         throw it.toUserFacingException()
