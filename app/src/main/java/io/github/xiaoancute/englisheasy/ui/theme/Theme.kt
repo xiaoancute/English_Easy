@@ -32,12 +32,16 @@ fun EnglishEasyTheme(
         darkTheme -> darkColorScheme(
             primary = seedColor,
             background = Color(0xFF111318),
-            surface = Color(0xFF1A1C1E),
+            surface = Color(0xFF181A1D),
+            surfaceVariant = Color(0xFF22262A),
+            outlineVariant = Color(0xFF343A40),
         )
         else -> lightColorScheme(
             primary = seedColor,
-            background = Color(0xFFF8F9FB),
+            background = Color(0xFFFAFAF9),
             surface = Color(0xFFFFFFFF),
+            surfaceVariant = Color(0xFFF3F5F6),
+            outlineVariant = Color(0xFFE0E4E7),
         )
     }
 
