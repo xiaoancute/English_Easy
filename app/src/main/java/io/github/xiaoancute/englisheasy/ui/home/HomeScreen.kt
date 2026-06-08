@@ -98,9 +98,9 @@ fun HomeScreen(
 
     LaunchedEffect(state, pendingStudyLookupWord) {
         val word = pendingStudyLookupWord ?: return@LaunchedEffect
-        when (state) {
+        when (val currentState = state) {
             is HomeUiState.Success -> {
-                snackbarHostState.showSnackbar("已加入学习中：${state.card.word}")
+                snackbarHostState.showSnackbar("已加入学习中：${currentState.card.word}")
                 pendingStudyLookupWord = null
             }
             is HomeUiState.Error -> {
