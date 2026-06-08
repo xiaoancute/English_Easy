@@ -9,12 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -27,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +40,14 @@ import io.github.xiaoancute.englisheasy.data.learning.LearningDashboard
 import io.github.xiaoancute.englisheasy.data.learning.TodayStudyTask
 import io.github.xiaoancute.englisheasy.data.review.ReviewGrade
 import io.github.xiaoancute.englisheasy.data.vocabulary.VocabularyPack
+import io.github.xiaoancute.englisheasy.ui.components.CompactInfoRow
 import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
+import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
+import io.github.xiaoancute.englisheasy.ui.components.QuietSurface
+import io.github.xiaoancute.englisheasy.ui.components.SectionHeader
+import io.github.xiaoancute.englisheasy.ui.components.StatePanel
+import io.github.xiaoancute.englisheasy.ui.components.quietTextButtonColors
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +66,8 @@ fun StudyScreen(
     val current = dueCards.firstOrNull()
     var revealedWord by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableStateOf(0) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(current?.entity?.word) {
         revealedWord = null
@@ -69,6 +80,7 @@ fun StudyScreen(
                 title = { Text("学习") },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             TabRow(selectedTabIndex = selectedTab) {
@@ -92,12 +104,20 @@ fun StudyScreen(
                     currentReview = current,
                     revealed = current != null && revealedWord == current.entity.word,
                     onReveal = { current?.let { revealedWord = it.entity.word } },
-                    onReview = { grade -> current?.let { viewModel.review(it.entity, grade) } },
+                    onReview = { grade ->
+                        current?.let {
+                            viewModel.review(it.entity, grade)
+                            scope.launch { snackbarHostState.showSnackbar("复习已记录") }
+                        }
+                    },
                     onStartWord = { word ->
                         onStudyTaskWordClick(word)
                     },
                     onWeakWordClick = onWordClick,
-                    onSkipWord = viewModel::skipWord,
+                    onSkipWord = { word ->
+                        viewModel.skipWord(word)
+                        scope.launch { snackbarHostState.showSnackbar("$word 已跳过，可在词库恢复") }
+                    },
                     onOpenPacks = { selectedTab = 1 },
                 )
             } else {
@@ -106,7 +126,10 @@ fun StudyScreen(
                     dashboard = dashboard,
                     skippedWords = skippedWords,
                     onPackSelected = viewModel::selectPack,
-                    onRestoreSkippedWord = viewModel::restoreSkippedWord,
+                    onRestoreSkippedWord = { word ->
+                        viewModel.restoreSkippedWord(word)
+                        scope.launch { snackbarHostState.showSnackbar("$word 已恢复") }
+                    },
                 )
             }
         }
@@ -130,26 +153,12 @@ private fun TodaySection(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(
+                horizontal = EnglishEasySpacing.PageHorizontal,
+                vertical = EnglishEasySpacing.PageVertical,
+            ),
+        verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
     ) {
-        item {
-            LearningOverviewCard(
-                dashboard = dashboard,
-                task = task,
-                onOpenPacks = onOpenPacks,
-            )
-        }
-
-        if (weakWords.isNotEmpty()) {
-            item {
-                WeakWordsCard(
-                    words = weakWords,
-                    onWordClick = onWeakWordClick,
-                )
-            }
-        }
-
         item {
             when (task) {
                 is TodayStudyTask.Review -> {
@@ -193,6 +202,23 @@ private fun TodaySection(
                 )
             }
         }
+
+        item {
+            LearningOverviewCard(
+                dashboard = dashboard,
+                task = task,
+                onOpenPacks = onOpenPacks,
+            )
+        }
+
+        if (weakWords.isNotEmpty()) {
+            item {
+                WeakWordsCard(
+                    words = weakWords,
+                    onWordClick = onWeakWordClick,
+                )
+            }
+        }
     }
 }
 
@@ -202,117 +228,39 @@ private fun LearningOverviewCard(
     task: TodayStudyTask,
     onOpenPacks: () -> Unit,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = "今日概览",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = dashboard.selectedPackLabel ?: "未选择词库",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
+    QuietSurface(tonal = true) {
+        SectionHeader(
+            title = "今日概览",
+            subtitle = dashboard.selectedPackLabel ?: "未选择词库",
+            trailing = {
                 OutlinedButton(onClick = onOpenPacks) {
                     Text(if (dashboard.hasSelectedPack) "切换" else "选择")
                 }
             }
+        )
 
-            if (dashboard.hasSelectedPack) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "学习进度",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = "${dashboard.learnedCount} / ${dashboard.totalCount} · ${dashboard.progressPercent}%",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    LinearProgressIndicator(
-                        progress = { dashboard.progressFraction },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            } else {
-                Text(
-                    text = "先选一个词库，系统会按这个范围安排新词和复习。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Surface(
+        if (dashboard.hasSelectedPack) {
+            CompactInfoRow(
+                label = "学习进度",
+                value = "${dashboard.learnedCount} / ${dashboard.totalCount} · ${dashboard.progressPercent}%",
+            )
+            LinearProgressIndicator(
+                progress = { dashboard.progressFraction },
                 modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = MaterialTheme.shapes.medium,
-            ) {
-                Text(
-                    text = "下一步：${taskLabel(task)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SummaryMetric(
-                    label = "到期复习",
-                    value = dashboard.dueReviewCount.toString(),
-                    modifier = Modifier.weight(1f),
-                )
-                SummaryMetric(
-                    label = "今日新词",
-                    value = dashboard.todayWordCount.toString(),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SummaryMetric(
-                    label = "可安排",
-                    value = dashboard.availableCount.toString(),
-                    modifier = Modifier.weight(1f),
-                )
-                SummaryMetric(
-                    label = "已跳过",
-                    value = dashboard.skippedCount.toString(),
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            )
+        } else {
+            Text(
+                text = "先选一个词库，系统会按这个范围安排新词和复习。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+
+        CompactInfoRow(label = "下一步", value = taskLabel(task))
+        CompactInfoRow(label = "到期复习", value = dashboard.dueReviewCount.toString())
+        CompactInfoRow(label = "今日新词", value = dashboard.todayWordCount.toString())
+        CompactInfoRow(label = "可安排", value = dashboard.availableCount.toString())
+        CompactInfoRow(label = "已跳过", value = dashboard.skippedCount.toString())
     }
 }
 
@@ -321,38 +269,17 @@ private fun WeakWordsCard(
     words: List<String>,
     onWordClick: (String) -> Unit,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = "薄弱词",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "${words.size} 个需要多看几眼",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+    QuietSurface(tonal = true, contentPadding = 12.dp) {
+        SectionHeader(
+            title = "薄弱词",
+            subtitle = "${words.size} 个需要多看几眼",
+        )
 
-            words.take(WEAK_WORD_PREVIEW_LIMIT).forEach { word ->
-                WeakWordRow(
-                    word = word,
-                    onClick = { onWordClick(word) },
-                )
-            }
+        words.take(WEAK_WORD_PREVIEW_LIMIT).forEach { word ->
+            WeakWordRow(
+                word = word,
+                onClick = { onWordClick(word) },
+            )
         }
     }
 }
@@ -362,61 +289,27 @@ private fun WeakWordRow(
     word: String,
     onClick: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = MaterialTheme.shapes.medium,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        Text(
+            text = word,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        TextButton(
+            onClick = onClick,
+            colors = quietTextButtonColors(),
         ) {
-            Text(
-                text = word,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            TextButton(onClick = onClick) {
-                Text("查看")
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryMetric(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Text("查看")
         }
     }
 }
@@ -428,35 +321,28 @@ private fun NewWordTaskCard(
     onStart: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+    QuietSurface(contentPadding = 18.dp) {
+        WordStatusLabel(text = "今日新词 · $remainingCount 个")
+        Text(
+            text = word,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            WordStatusLabel(text = "今日新词 · $remainingCount 个")
-            Text(
-                text = word,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Button(
+                onClick = onStart,
+                modifier = Modifier.weight(1f),
             ) {
-                Button(
-                    onClick = onStart,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("学习这个词")
-                }
-                OutlinedButton(onClick = onSkip) {
-                    Text("跳过")
-                }
+                Text("学习这个词")
+            }
+            OutlinedButton(onClick = onSkip) {
+                Text("跳过")
             }
         }
     }
@@ -469,26 +355,12 @@ private fun PlainStateCard(
     actionText: String,
     onAction: () -> Unit,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedButton(onClick = onAction) {
-                Text(actionText)
-            }
+    StatePanel(
+        title = title,
+        body = body,
+    ) {
+        OutlinedButton(onClick = onAction) {
+            Text(actionText)
         }
     }
 }
@@ -504,14 +376,16 @@ private fun VocabularySection(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(
+                horizontal = EnglishEasySpacing.PageHorizontal,
+                vertical = EnglishEasySpacing.PageVertical,
+            ),
+        verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.ItemGap),
     ) {
         item {
-            Text(
-                text = "学习范围",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+            SectionHeader(
+                title = "学习范围",
+                subtitle = "选择新词和复习的来源",
             )
         }
 
@@ -531,10 +405,9 @@ private fun VocabularySection(
 
         if (skippedWords.isNotEmpty()) {
             item {
-                Text(
-                    text = "已跳过 · ${skippedWords.size} 个",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                SectionHeader(
+                    title = "已跳过",
+                    subtitle = "${skippedWords.size} 个，可恢复到学习范围",
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
@@ -552,40 +425,22 @@ private fun VocabularySection(
 private fun SelectedPackSummary(
     dashboard: LearningDashboard,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "当前学习范围",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+    QuietSurface(tonal = true, contentPadding = 12.dp) {
+        SectionHeader(
+            title = "当前学习范围",
+            subtitle = dashboard.selectedPackLabel ?: "未选择词库",
+        )
+        if (dashboard.hasSelectedPack) {
+            CompactInfoRow(
+                label = "已学",
+                value = "${dashboard.learnedCount} / ${dashboard.totalCount} · ${dashboard.progressPercent}%",
             )
-            Text(
-                text = dashboard.selectedPackLabel ?: "未选择词库",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            if (dashboard.hasSelectedPack) {
-                Text(
-                    text = "已学 ${dashboard.learnedCount} / ${dashboard.totalCount} · ${dashboard.progressPercent}%",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                LinearProgressIndicator(
-                    progress = { dashboard.progressFraction },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            Text(
-                text = "今日可安排 ${dashboard.availableCount} 个",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            LinearProgressIndicator(
+                progress = { dashboard.progressFraction },
+                modifier = Modifier.fillMaxWidth(),
             )
         }
+        CompactInfoRow(label = "今日可安排", value = "${dashboard.availableCount} 个")
     }
 }
 
@@ -594,11 +449,9 @@ private fun SkippedWordItem(
     word: String,
     onRestore: () -> Unit,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    QuietSurface(contentPadding = 12.dp) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -606,6 +459,7 @@ private fun SkippedWordItem(
                 text = word,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -620,8 +474,8 @@ private fun SkippedWordItem(
 @Composable
 private fun WordStatusLabel(text: String) {
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         shape = MaterialTheme.shapes.small,
     ) {
         Text(
@@ -638,50 +492,46 @@ private fun VocabularyPackItem(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+    QuietSurface(contentPadding = 12.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "${pack.stage.label}词库",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (selected) {
-                            WordStatusLabel(text = "当前")
-                        }
-                    }
                     Text(
-                        text = "${pack.learnedCount} / ${pack.totalCount} · ${packProgressPercent(pack)}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = "${pack.stage.label}词库",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
+                    if (selected) {
+                        WordStatusLabel(text = "当前")
+                    }
                 }
-                OutlinedButton(onClick = onClick) {
-                    Text(if (selected) "已选" else "选择")
-                }
+                CompactInfoRow(
+                    label = "进度",
+                    value = "${pack.learnedCount} / ${pack.totalCount} · ${packProgressPercent(pack)}%",
+                )
             }
-
-            LinearProgressIndicator(
-                progress = { packProgressFraction(pack) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            OutlinedButton(onClick = onClick) {
+                Text(if (selected) "已选" else "选择")
+            }
         }
+
+        LinearProgressIndicator(
+            progress = { packProgressFraction(pack) },
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
@@ -716,13 +566,9 @@ private fun StudyCardContent(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.ItemGap),
     ) {
-        Text(
-            text = "$remainingCount 张到期",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        WordStatusLabel(text = "复习 · $remainingCount 张到期")
 
         if (revealed && studyCard.card != null) {
             ConceptCardView(
@@ -732,22 +578,17 @@ private fun StudyCardContent(
                 scrollable = false,
             )
         } else {
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Text(
-                        text = studyCard.entity.word,
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    OutlinedButton(onClick = onReveal) {
-                        Text("显示概念卡")
-                    }
+            QuietSurface(contentPadding = 18.dp) {
+                Text(
+                    text = studyCard.entity.word,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                OutlinedButton(onClick = onReveal) {
+                    Text("显示概念卡")
                 }
             }
         }
