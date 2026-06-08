@@ -24,13 +24,14 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -42,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +59,9 @@ import io.github.xiaoancute.englisheasy.data.settings.PresetColors
 import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
 import io.github.xiaoancute.englisheasy.data.settings.ThemeConfig
 import io.github.xiaoancute.englisheasy.ui.about.AboutScreen
+import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
+import io.github.xiaoancute.englisheasy.ui.components.QuietSurface
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +79,8 @@ fun SettingsScreen(
     var showAbout by remember { mutableStateOf(false) }
     var selectedColor by remember { mutableStateOf(savedTheme.themeColor) }
     var useDynamicColor by remember { mutableStateOf(savedTheme.useDynamicColor) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     if (showAbout) {
         AboutScreen(onBack = { showAbout = false }, modifier = modifier)
@@ -98,14 +105,18 @@ fun SettingsScreen(
                 title = { Text("设置") },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(
+                    horizontal = EnglishEasySpacing.PageHorizontal,
+                    vertical = EnglishEasySpacing.PageVertical,
+                ),
+            verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
         ) {
             AiServiceSection(
                 apiKey = apiKey,
@@ -124,6 +135,7 @@ fun SettingsScreen(
                             model = model.trim(),
                         ),
                     )
+                    scope.launch { snackbarHostState.showSnackbar("AI 服务设置已保存") }
                 },
             )
 
@@ -138,6 +150,7 @@ fun SettingsScreen(
                             useDynamicColor = enabled,
                         ),
                     )
+                    scope.launch { snackbarHostState.showSnackbar("主题设置已保存") }
                 },
                 onColorSelected = { color ->
                     selectedColor = color
@@ -147,6 +160,7 @@ fun SettingsScreen(
                             useDynamicColor = useDynamicColor,
                         ),
                     )
+                    scope.launch { snackbarHostState.showSnackbar("主题设置已保存") }
                 },
             )
 
@@ -306,43 +320,37 @@ private fun SettingsCard(
     trailing: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+    QuietSurface(contentPadding = 16.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (subtitle != null) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (subtitle != null) {
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                if (trailing != null) {
-                    Box(modifier = Modifier.padding(start = 12.dp)) {
-                        trailing()
-                    }
                 }
             }
-            content()
+            if (trailing != null) {
+                Box(modifier = Modifier.padding(start = 12.dp)) {
+                    trailing()
+                }
+            }
         }
+        content()
     }
 }
 
@@ -385,15 +393,11 @@ private fun StatusPill(
 ) {
     Surface(
         color = if (positive) {
-            MaterialTheme.colorScheme.primaryContainer
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)
         } else {
-            MaterialTheme.colorScheme.surfaceVariant
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f)
         },
-        contentColor = if (positive) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         shape = MaterialTheme.shapes.small,
     ) {
         Text(

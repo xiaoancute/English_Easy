@@ -3,6 +3,7 @@ package io.github.xiaoancute.englisheasy.ui.history
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -21,13 +23,12 @@ import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -41,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.prompt.CURRENT_PROMPT_VERSION
+import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
+import io.github.xiaoancute.englisheasy.ui.components.StatePanel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -120,14 +123,26 @@ private fun SavedCardsScreen(
         },
     ) { innerPadding ->
         if (cards.isEmpty()) {
-            EmptyState(text = emptyText, modifier = Modifier.padding(innerPadding))
+            val emptyBody = if (title == "查询历史") {
+                "查过的词会按时间出现在这里。"
+            } else {
+                "收藏的概念卡会出现在这里，方便回看和复制。"
+            }
+            EmptyState(
+                title = emptyText,
+                body = emptyBody,
+                modifier = Modifier.padding(innerPadding),
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
                     .padding(innerPadding)
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(
+                        horizontal = EnglishEasySpacing.PageHorizontal,
+                        vertical = EnglishEasySpacing.PageVertical,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.ItemGap),
             ) {
                 items(cards, key = { it.word }) { entity ->
                     HistoryItem(
@@ -149,18 +164,17 @@ private fun SavedCardsScreen(
 
 @Composable
 private fun EmptyState(
-    text: String,
+    title: String,
+    body: String,
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = EnglishEasySpacing.PageHorizontal),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-        )
+        StatePanel(title = title, body = body)
     }
 }
 
@@ -176,84 +190,92 @@ private fun HistoryItem(
         entity.userExample.isNotBlank() ||
         entity.promptVersion < CURRENT_PROMPT_VERSION
 
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(EnglishEasySpacing.Radius),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.ItemGap),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = entity.word,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = formatTimestamp(entity.queriedAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                )
-                if (hasBadges) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (entity.userNote.isNotBlank()) {
-                            InlineBadge(
-                                icon = Icons.Default.EditNote,
-                                text = "有笔记",
-                                contentDescription = "有笔记",
-                            )
-                        }
-                        if (entity.userExample.isNotBlank()) {
-                            InlineBadge(
-                                icon = Icons.Default.EditNote,
-                                text = "有例句",
-                                contentDescription = "有例句",
-                            )
-                        }
-                        if (entity.promptVersion < CURRENT_PROMPT_VERSION) {
-                            InlineBadge(
-                                icon = Icons.Default.Update,
-                                text = "可更新",
-                                contentDescription = "概念可更新",
-                            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = entity.word,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = formatTimestamp(entity.queriedAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (hasBadges) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (entity.userNote.isNotBlank()) {
+                                InlineBadge(
+                                    icon = Icons.Default.EditNote,
+                                    text = "有笔记",
+                                    contentDescription = "有笔记",
+                                )
+                            }
+                            if (entity.userExample.isNotBlank()) {
+                                InlineBadge(
+                                    icon = Icons.Default.EditNote,
+                                    text = "有例句",
+                                    contentDescription = "有例句",
+                                )
+                            }
+                            if (entity.promptVersion < CURRENT_PROMPT_VERSION) {
+                                InlineBadge(
+                                    icon = Icons.Default.Update,
+                                    text = "可更新",
+                                    contentDescription = "概念可更新",
+                                )
+                            }
                         }
                     }
                 }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = { onFavoriteChange(!entity.isFavorite) }) {
-                    Icon(
-                        imageVector = if (entity.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = if (entity.isFavorite) "取消收藏" else "收藏",
-                        tint = if (entity.isFavorite) {
-                            MaterialTheme.colorScheme.tertiary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
-                IconButton(onClick = onCopy) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "复制",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "删除",
-                        tint = MaterialTheme.colorScheme.error,
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { onFavoriteChange(!entity.isFavorite) }) {
+                        Icon(
+                            imageVector = if (entity.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = if (entity.isFavorite) "取消收藏" else "收藏",
+                            tint = if (entity.isFavorite) {
+                                MaterialTheme.colorScheme.tertiary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                    IconButton(onClick = onCopy) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "复制",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "删除",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
         }
@@ -273,12 +295,12 @@ private fun InlineBadge(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.secondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
