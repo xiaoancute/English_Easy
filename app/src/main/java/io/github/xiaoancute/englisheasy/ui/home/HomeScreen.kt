@@ -161,7 +161,7 @@ private fun LookupPanel(
     QuietSurface(tonal = true) {
         SectionHeader(
             title = "概念还原",
-            subtitle = "查单词、短语和固定搭配",
+            subtitle = "先看核心画面，再写自己的例句",
         )
 
         OutlinedTextField(
@@ -186,7 +186,7 @@ private fun LookupPanel(
             onClick = onLookup,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("查询")
+            Text("还原概念")
         }
     }
 }
@@ -262,8 +262,8 @@ private fun IdleHint(
 ) {
     QuietSurface(tonal = false) {
         SectionHeader(
-            title = "试几个典型输入",
-            subtitle = "结果会显示为概念卡，历史、收藏和笔记保存在本机。",
+            title = "从容易误解的词开始",
+            subtitle = "查完重点看核心概念和典型场景，最后写一句自己的英文。",
         )
         Row(
             modifier = Modifier
@@ -273,7 +273,7 @@ private fun IdleHint(
         ) {
             ExampleChip(text = "spring", onClick = onExampleLookup)
             ExampleChip(text = "break the ice", onClick = onExampleLookup)
-            ExampleChip(text = "red apple", onClick = onExampleLookup)
+            ExampleChip(text = "worth", onClick = onExampleLookup)
         }
     }
 }
@@ -293,7 +293,7 @@ private fun ExampleChip(
 private fun SetupGuide() {
     StatePanel(
         title = "需要先配置 AI 服务",
-        body = "在底部「设置」里填入 Base URL、模型和 API Key 后即可查词。Key 只保存在本机。",
+        body = "在底部「设置」里填入 Base URL、模型和 API Key 后即可查词。查完可以保存理解和自己的例句。",
     )
 }
 
@@ -320,7 +320,7 @@ private fun LoadingIndicator() {
         ) {
             CircularProgressIndicator()
             Text(
-                text = "正在还原概念……",
+                text = "正在还原核心画面……",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha * 0.7f),
             )

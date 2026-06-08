@@ -169,7 +169,7 @@ private fun TodaySection(
                     if (currentReview == null) {
                         PlainStateCard(
                             title = "暂无到期复习",
-                            body = "现在可以学一个新词，或者去词库切换范围。",
+                            body = "现在可以查一个新词并写例句，或者去词库切换范围。",
                             actionText = "去词库",
                             onAction = onOpenPacks,
                         )
@@ -193,14 +193,14 @@ private fun TodaySection(
 
                 TodayStudyTask.ChoosePack -> PlainStateCard(
                     title = "选择学习范围",
-                    body = "先选一个词库，系统会按这个范围安排新词和复习。",
+                    body = "先选一个词库。新词会进入概念还原，再用自己的例句确认会用。",
                     actionText = "去词库",
                     onAction = onOpenPacks,
                 )
 
                 TodayStudyTask.Done -> PlainStateCard(
                     title = "今日完成",
-                    body = "当前词库没有可安排的新词，也没有到期复习。",
+                    body = "今天的复习和新词都处理完了。可以回看薄弱词，或者换一个范围。",
                     actionText = "查看词库",
                     onAction = onOpenPacks,
                 )
@@ -332,6 +332,11 @@ private fun NewWordTaskCard(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+        Text(
+            text = "先看概念卡，再写一句自己的英文。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -340,7 +345,7 @@ private fun NewWordTaskCard(
                 onClick = onStart,
                 modifier = Modifier.weight(1f),
             ) {
-                Text("学习这个词")
+                Text("查概念并造句")
             }
             OutlinedButton(onClick = onSkip) {
                 Text("跳过")
@@ -386,7 +391,7 @@ private fun VocabularySection(
         item {
             SectionHeader(
                 title = "学习范围",
-                subtitle = "选择新词和复习的来源",
+                subtitle = "选一个来源，系统安排新词和复习",
             )
         }
 
@@ -438,7 +443,7 @@ private fun SelectedPackSummary(
             )
             QuietProgressBar(progress = dashboard.progressFraction)
         }
-        CompactInfoRow(label = "今日可安排", value = "${dashboard.availableCount} 个")
+        CompactInfoRow(label = "今日可学新词", value = "${dashboard.availableCount} 个")
     }
 }
 
@@ -558,7 +563,7 @@ private fun QuietProgressBar(
 private fun taskLabel(task: TodayStudyTask): String {
     return when (task) {
         is TodayStudyTask.Review -> "复习 ${task.dueReviewCount} 个到期词"
-        is TodayStudyTask.NewWord -> "学习新词 · 剩余 ${task.remainingCount} 个"
+        is TodayStudyTask.NewWord -> "查新词并造句 · 剩余 ${task.remainingCount} 个"
         TodayStudyTask.ChoosePack -> "先选词库"
         TodayStudyTask.Done -> "今日完成"
     }

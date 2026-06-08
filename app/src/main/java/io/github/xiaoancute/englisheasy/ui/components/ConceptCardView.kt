@@ -445,7 +445,7 @@ private fun UserNoteSection(
             modifier = Modifier.fillMaxWidth(1f),
             minLines = 3,
             maxLines = 6,
-            placeholder = { Text("写下你自己的理解") },
+            placeholder = { Text("把核心画面用自己的话写成一句") },
         )
     }
 }
@@ -455,14 +455,19 @@ private fun UserExampleSection(
     example: String,
     onExampleChange: (String) -> Unit,
 ) {
-    Section(title = "我的例句") {
+    Section(title = "我的输出") {
+        Text(
+            text = "写一句你真的可能会用的话，不要只改写上面的例句。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         OutlinedTextField(
             value = example,
             onValueChange = onExampleChange,
             modifier = Modifier.fillMaxWidth(1f),
             minLines = 2,
             maxLines = 4,
-            placeholder = { Text("用这个词写一句自己的英文句子") },
+            placeholder = { Text("I would use this word when...") },
         )
     }
 }
