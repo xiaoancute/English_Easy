@@ -19,8 +19,6 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -95,11 +93,11 @@ fun ConceptCardView(
         modifier
             .fillMaxWidth(1f)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(vertical = 8.dp)
     } else {
         modifier
             .fillMaxWidth(1f)
-            .padding(16.dp)
+            .padding(vertical = 8.dp)
     }
 
     Column(
@@ -107,7 +105,7 @@ fun ConceptCardView(
             alpha = enterAnim.value
             translationY = (1f - enterAnim.value) * 24f
         },
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
     ) {
         WordHeader(
             word = card.word,
@@ -157,57 +155,47 @@ private fun WordHeader(
     onCopyClick: (() -> Unit)?,
     onRefreshClick: (() -> Unit)?,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(1f),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    QuietSurface(contentPadding = 14.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth(1f),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(1f),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Text(
-                    text = word,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 12.dp),
-                )
-                EntryTypePill(entryType)
-            }
-
-            HeaderActions(
-                isFavorite = isFavorite,
-                onFavoriteChange = onFavoriteChange,
-                onShareClick = onShareClick,
-                onCopyClick = onCopyClick,
-                onRefreshClick = onRefreshClick,
+            Text(
+                text = word,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp),
             )
+            EntryTypePill(entryType)
         }
+
+        HeaderActions(
+            isFavorite = isFavorite,
+            onFavoriteChange = onFavoriteChange,
+            onShareClick = onShareClick,
+            onCopyClick = onCopyClick,
+            onRefreshClick = onRefreshClick,
+        )
     }
 }
 
 @Composable
 private fun EntryTypePill(entryType: EntryType) {
     Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(EnglishEasySpacing.Radius),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
     ) {
         Text(
             text = entryType.label,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -300,37 +288,24 @@ private fun SingleCardBody(
     }
 }
 
-/** 核心概念：卡片的灵魂，用淡绿底块突出，画面用衬线大字，锚词做成 chip。 */
+/** 核心概念：作为学习笔记的主段落，用轻量底色突出，但不做大装饰卡。 */
 @Composable
 private fun CoreConceptBlock(core: CoreConcept) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(1f),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    QuietSurface(tonal = true, contentPadding = 16.dp) {
+        SectionHeader(title = "核心概念")
+        Text(
+            text = core.picture,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "核心概念",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                text = "锚词",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 8.dp),
             )
-            Text(
-                text = core.picture,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "锚词",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(end = 8.dp),
-                )
-                AnchorChip(core.anchorWord)
-            }
+            AnchorChip(core.anchorWord)
         }
     }
 }
@@ -339,56 +314,48 @@ private fun CoreConceptBlock(core: CoreConcept) {
 private fun AnchorChip(word: String) {
     Surface(
         shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Text(
             text = word,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
         )
     }
 }
 
-/** 单个场景：例句 + 朗读，画面解释另起一行，整体框成一张轻卡。 */
+/** 单个场景：例句 + 朗读，画面解释另起一行，保持轻量行块。 */
 @Composable
 private fun ScenarioItem(sc: Scenario, onSpeak: (String) -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(1f),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Column(
-            modifier = Modifier.padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+    QuietSurface(contentPadding = 12.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth(1f),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(1f),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = sc.englishExample,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = { onSpeak(sc.englishExample) }) {
-                    Icon(
-                        imageVector = Icons.Default.VolumeUp,
-                        contentDescription = "朗读例句",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
             Text(
-                text = sc.pictureExplanation,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = sc.englishExample,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
             )
+            IconButton(onClick = { onSpeak(sc.englishExample) }) {
+                Icon(
+                    imageVector = Icons.Default.VolumeUp,
+                    contentDescription = "朗读例句",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
+        Text(
+            text = sc.pictureExplanation,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -445,42 +412,23 @@ private fun BranchesSection(
     branches: List<Branch>,
     onSpeak: (String) -> Unit,
 ) {
-    Text(
-        text = when (branches.firstOrNull()?.type) {
+    SectionHeader(
+        title = when (branches.firstOrNull()?.type) {
             BranchType.HOMONYM -> "本词其实是两个独立的词"
             BranchType.SEMANTIC_CLUSTER -> "本词分化成多个语义簇"
-            null -> ""
+            null -> "多义分支"
         },
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.secondary,
     )
     branches.forEachIndexed { idx, branch ->
-        Card(
-            modifier = Modifier.fillMaxWidth(1f),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            Column(
-                modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    text = "分支 ${idx + 1}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
-                branch.relationNote?.let { note ->
-                    Text(
-                        text = "共同祖源：$note",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    )
-                }
-                SingleCardBody(
-                    card = branch.card,
-                    onSpeak = onSpeak,
-                )
-            }
+        QuietSurface(tonal = true, contentPadding = 12.dp) {
+            SectionHeader(
+                title = "分支 ${idx + 1}",
+                subtitle = branch.relationNote?.let { "共同祖源：$it" },
+            )
+            SingleCardBody(
+                card = branch.card,
+                onSpeak = onSpeak,
+            )
         }
     }
 }
@@ -530,11 +478,7 @@ private fun TextToSpeech.speakExample(
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        SectionHeader(title = title)
         content()
     }
 }
