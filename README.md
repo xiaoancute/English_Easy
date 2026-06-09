@@ -85,18 +85,21 @@ cd English_Easy
 | 字段 | 说明 | 示例 |
 |------|------|------|
 | **Base URL** | OpenAI 兼容端点 | `https://api.openai.com/v1/` |
-| **模型名** | 使用的模型 | `gpt-4o-mini` |
+| **模型名** | 使用的模型 | `gpt-5-mini` |
 | **API Key** | 你的密钥 | `sk-proj-...` |
 
-**支持的服务商：**
-- **OpenAI**：`https://api.openai.com/v1/` + `gpt-4o-mini` / `gpt-4o`
-- **DeepSeek**：`https://api.deepseek.com/v1/` + `deepseek-v4-flash` / `deepseek-v4-pro`
-- **Moonshot**：`https://api.moonshot.cn/v1/` + `moonshot-v1-8k`
-- **智谱 GLM**：`https://open.bigmodel.cn/api/paas/v4/` + `glm-4-flash`
-- **Groq**：`https://api.groq.com/openai/v1/` + `llama-3.3-70b-versatile`
-- **本地 Ollama**：`http://localhost:11434/v1/` + `qwen2.5:7b`
+**支持的服务商（2026-06-09 按官网文档核对）：**
 
-> 💡 **推荐模型**：`gpt-4o-mini`（性价比高）或 `deepseek-v4-flash`（DeepSeek 轻量优先）
+| 服务商 | Base URL | 示例模型 | 官方文档 |
+|--------|----------|----------|----------|
+| OpenAI | `https://api.openai.com/v1/` | `gpt-5-mini` / `gpt-5.4-mini` | [Models](https://platform.openai.com/docs/models/gpt-5-mini) / [Chat API](https://platform.openai.com/docs/api-reference/chat/create) |
+| DeepSeek | `https://api.deepseek.com` | `deepseek-v4-flash` / `deepseek-v4-pro` | [API Docs](https://api-docs.deepseek.com/) / [Updates](https://api-docs.deepseek.com/updates/) |
+| Kimi / Moonshot | `https://api.moonshot.cn/v1` | `kimi-k2.6` | [Kimi API](https://platform.moonshot.cn/docs/guide/start-using-kimi-api) |
+| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | `glm-5.1` / `glm-4.7-flash` | [API 端点](https://docs.bigmodel.cn/cn/api/introduction) / [模型列表](https://docs.bigmodel.cn/cn/guide/start/model-overview) |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` | [OpenAI 兼容](https://console.groq.com/docs/openai) / [Models](https://console.groq.com/docs/models) |
+| 本地 Ollama | `http://localhost:11434/v1` | `llama3.2` | [OpenAI 兼容](https://docs.ollama.com/openai) |
+
+> 💡 **推荐模型**：`gpt-5-mini`（OpenAI 成本优先）或 `deepseek-v4-flash`（DeepSeek 轻量优先）。模型名更新很快，正式使用前建议再看对应服务商官网。
 
 ### 3. 开始查询
 

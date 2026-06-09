@@ -198,7 +198,7 @@ private fun AiServiceSection(
             label = { Text("Base URL") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("例：https://api.openai.com/v1/ 或 https://api.deepseek.com/v1/") },
+            supportingText = { Text("例：https://api.openai.com/v1/ 或 https://api.deepseek.com") },
         )
 
         OutlinedTextField(
@@ -207,7 +207,7 @@ private fun AiServiceSection(
             label = { Text("模型名") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("例：gpt-4o-mini / deepseek-v4-flash / moonshot-v1-8k") },
+            supportingText = { Text("例：gpt-5-mini / deepseek-v4-flash / kimi-k2.6") },
         )
 
         OutlinedTextField(
