@@ -207,7 +207,7 @@ private fun AiServiceSection(
             label = { Text("模型名") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("例：gpt-4o-mini / deepseek-chat / moonshot-v1-8k") },
+            supportingText = { Text("例：gpt-4o-mini / deepseek-v4-flash / moonshot-v1-8k") },
         )
 
         OutlinedTextField(

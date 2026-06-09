@@ -90,13 +90,13 @@ cd English_Easy
 
 **支持的服务商：**
 - **OpenAI**：`https://api.openai.com/v1/` + `gpt-4o-mini` / `gpt-4o`
-- **DeepSeek**：`https://api.deepseek.com/v1/` + `deepseek-chat`
+- **DeepSeek**：`https://api.deepseek.com/v1/` + `deepseek-v4-flash` / `deepseek-v4-pro`
 - **Moonshot**：`https://api.moonshot.cn/v1/` + `moonshot-v1-8k`
 - **智谱 GLM**：`https://open.bigmodel.cn/api/paas/v4/` + `glm-4-flash`
 - **Groq**：`https://api.groq.com/openai/v1/` + `llama-3.3-70b-versatile`
 - **本地 Ollama**：`http://localhost:11434/v1/` + `qwen2.5:7b`
 
-> 💡 **推荐模型**：`gpt-4o-mini`（性价比高）或 `deepseek-chat`（中文友好）
+> 💡 **推荐模型**：`gpt-4o-mini`（性价比高）或 `deepseek-v4-flash`（DeepSeek 轻量优先）
 
 ### 3. 开始查询
 
