@@ -47,10 +47,11 @@ import io.github.xiaoancute.englisheasy.data.vocabulary.VocabularyPack
 import io.github.xiaoancute.englisheasy.ui.components.CompactInfoRow
 import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
-import io.github.xiaoancute.englisheasy.ui.components.QuietSurface
+import io.github.xiaoancute.englisheasy.ui.components.SurfaceCard
+import io.github.xiaoancute.englisheasy.ui.components.SurfaceTone
 import io.github.xiaoancute.englisheasy.ui.components.SectionHeader
 import io.github.xiaoancute.englisheasy.ui.components.StatePanel
-import io.github.xiaoancute.englisheasy.ui.components.quietTextButtonColors
+import io.github.xiaoancute.englisheasy.ui.components.accentTextButtonColors
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -232,7 +233,7 @@ private fun LearningOverviewCard(
     task: TodayStudyTask,
     onOpenPacks: () -> Unit,
 ) {
-    QuietSurface(tonal = true) {
+    SurfaceCard(tone = SurfaceTone.Tonal) {
         SectionHeader(
             title = "今日概览",
             subtitle = dashboard.selectedPackLabel ?: "未选择词库",
@@ -270,7 +271,7 @@ private fun WeakWordsCard(
     words: List<String>,
     onWordClick: (String) -> Unit,
 ) {
-    QuietSurface(tonal = true, contentPadding = 12.dp) {
+    SurfaceCard(tone = SurfaceTone.Tonal, contentPadding = 12.dp) {
         SectionHeader(
             title = "薄弱词",
             subtitle = "${words.size} 个需要多看几眼",
@@ -308,7 +309,7 @@ private fun WeakWordRow(
         )
         TextButton(
             onClick = onClick,
-            colors = quietTextButtonColors(),
+            colors = accentTextButtonColors(),
         ) {
             Text("查看")
         }
@@ -322,7 +323,7 @@ private fun NewWordTaskCard(
     onStart: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    QuietSurface(contentPadding = 18.dp) {
+    SurfaceCard(contentPadding = 18.dp) {
         WordStatusLabel(text = "今日新词 · $remainingCount 个")
         Text(
             text = word,
@@ -431,7 +432,7 @@ private fun VocabularySection(
 private fun SelectedPackSummary(
     dashboard: LearningDashboard,
 ) {
-    QuietSurface(tonal = true, contentPadding = 12.dp) {
+    SurfaceCard(tone = SurfaceTone.Tonal, contentPadding = 12.dp) {
         SectionHeader(
             title = "当前学习范围",
             subtitle = dashboard.selectedPackLabel ?: "未选择词库",
@@ -452,7 +453,7 @@ private fun SkippedWordItem(
     word: String,
     onRestore: () -> Unit,
 ) {
-    QuietSurface(contentPadding = 12.dp) {
+    SurfaceCard(contentPadding = 12.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -477,9 +478,9 @@ private fun SkippedWordItem(
 @Composable
 private fun WordStatusLabel(text: String) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = RoundedCornerShape(8.dp),
     ) {
         Text(
             text = text,
@@ -495,7 +496,7 @@ private fun VocabularyPackItem(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    QuietSurface(contentPadding = 12.dp) {
+    SurfaceCard(contentPadding = 12.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -544,15 +545,15 @@ private fun QuietProgressBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(4.dp)
+            .height(6.dp)
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
         if (normalized > 0f) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(normalized)
-                    .height(4.dp)
+                    .height(6.dp)
                     .clip(RoundedCornerShape(50))
                     .background(MaterialTheme.colorScheme.primary),
             )
@@ -603,7 +604,7 @@ private fun StudyCardContent(
                 scrollable = false,
             )
         } else {
-            QuietSurface(contentPadding = 18.dp) {
+            SurfaceCard(contentPadding = 18.dp) {
                 Text(
                     text = studyCard.entity.word,
                     style = MaterialTheme.typography.headlineLarge,
@@ -626,18 +627,21 @@ private fun StudyCardContent(
                 OutlinedButton(
                     onClick = { onReview(ReviewGrade.FORGOT) },
                     modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
                 ) {
                     Text("忘了")
                 }
                 OutlinedButton(
                     onClick = { onReview(ReviewGrade.VAGUE) },
                     modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
                 ) {
                     Text("模糊")
                 }
                 Button(
                     onClick = { onReview(ReviewGrade.REMEMBERED) },
                     modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
                 ) {
                     Text("记得")
                 }
