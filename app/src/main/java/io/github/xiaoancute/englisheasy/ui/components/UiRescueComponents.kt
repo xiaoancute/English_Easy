@@ -1,14 +1,19 @@
 package io.github.xiaoancute.englisheasy.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -16,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -33,33 +39,70 @@ object EnglishEasySpacing {
     val Radius = 24.dp
 }
 
+enum class SurfaceTone { Plain, Tonal, Hero }
+
 @Composable
-fun QuietSurface(
+fun SurfaceCard(
     modifier: Modifier = Modifier,
-    tonal: Boolean = false,
+    tone: SurfaceTone = SurfaceTone.Plain,
     contentPadding: Dp = EnglishEasySpacing.SurfacePadding,
-    content: @Composable () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
+    val container = when (tone) {
+        SurfaceTone.Plain -> MaterialTheme.colorScheme.surfaceContainer
+        SurfaceTone.Tonal -> MaterialTheme.colorScheme.surfaceContainerHigh
+        SurfaceTone.Hero -> MaterialTheme.colorScheme.primaryContainer
+    }
+    val radius = if (tone == SurfaceTone.Hero) EnglishEasySpacing.HeroRadius else EnglishEasySpacing.CardRadius
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(EnglishEasySpacing.Radius),
-        color = if (tonal) {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f)
-        } else {
-            MaterialTheme.colorScheme.surface
-        },
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
-        ),
+        shape = RoundedCornerShape(radius),
+        color = container,
     ) {
         Column(
             modifier = Modifier.padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.ItemGap),
-        ) {
-            content()
+            content = content,
+        )
+    }
+}
+
+/** 圆形 tonal 图标按钮（朗读、次要操作）。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TonalIconButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    container: Color = MaterialTheme.colorScheme.secondaryContainer,
+    tint: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.size(42.dp),
+        shape = CircleShape,
+        color = container,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(imageVector = icon, contentDescription = contentDescription, tint = tint)
         }
     }
+}
+
+/** 小写大写 section 标签。 */
+@Composable
+fun SectionLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary,
+) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelLarge,
+        color = color,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -81,7 +124,6 @@ fun SectionHeader(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             if (subtitle != null) {
@@ -92,9 +134,7 @@ fun SectionHeader(
                 )
             }
         }
-        if (trailing != null) {
-            Row(content = trailing)
-        }
+        if (trailing != null) Row(verticalAlignment = Alignment.CenterVertically, content = trailing)
     }
 }
 
@@ -105,11 +145,10 @@ fun StatePanel(
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
 ) {
-    QuietSurface(modifier = modifier, tonal = true) {
+    SurfaceCard(modifier = modifier, tone = SurfaceTone.Tonal) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
@@ -117,9 +156,7 @@ fun StatePanel(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (action != null) {
-            action()
-        }
+        if (action != null) action()
     }
 }
 
@@ -137,12 +174,12 @@ fun CompactInfoRow(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = valueColor,
         )
@@ -150,6 +187,6 @@ fun CompactInfoRow(
 }
 
 @Composable
-fun quietTextButtonColors() = ButtonDefaults.textButtonColors(
+fun accentTextButtonColors() = ButtonDefaults.textButtonColors(
     contentColor = MaterialTheme.colorScheme.primary,
 )
