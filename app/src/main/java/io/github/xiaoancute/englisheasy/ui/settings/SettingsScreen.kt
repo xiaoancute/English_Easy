@@ -58,8 +58,10 @@ import io.github.xiaoancute.englisheasy.data.settings.PresetColors
 import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
 import io.github.xiaoancute.englisheasy.data.settings.ThemeConfig
 import io.github.xiaoancute.englisheasy.ui.about.AboutScreen
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
 import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
-import io.github.xiaoancute.englisheasy.ui.components.QuietSurface
+import io.github.xiaoancute.englisheasy.ui.components.SurfaceCard
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -198,6 +200,7 @@ private fun AiServiceSection(
             label = { Text("Base URL") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
             supportingText = { Text("例：https://api.openai.com/v1/ 或 https://api.deepseek.com") },
         )
 
@@ -207,6 +210,7 @@ private fun AiServiceSection(
             label = { Text("模型名") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
             supportingText = { Text("例：gpt-5-mini / deepseek-v4-flash / kimi-k2.6") },
         )
 
@@ -216,6 +220,7 @@ private fun AiServiceSection(
             label = { Text("API Key") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
@@ -230,7 +235,8 @@ private fun AiServiceSection(
 
         Button(
             onClick = onSave,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
         ) {
             Text("保存 AI 配置")
         }
@@ -319,7 +325,7 @@ private fun SettingsCard(
     trailing: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    QuietSurface(contentPadding = 16.dp) {
+    SurfaceCard(contentPadding = 16.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -392,12 +398,12 @@ private fun StatusPill(
 ) {
     Surface(
         color = if (positive) {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)
+            MaterialTheme.colorScheme.secondaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f)
+            MaterialTheme.colorScheme.surfaceContainerHighest
         },
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = MaterialTheme.shapes.small,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = RoundedCornerShape(8.dp),
     ) {
         Text(
             text = text,
@@ -416,13 +422,13 @@ private fun ColorSwatch(
 ) {
     Box(
         modifier = Modifier
-            .size(34.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .background(color)
             .border(
                 width = 2.dp,
                 color = if (selected) {
-                    MaterialTheme.colorScheme.onSurface
+                    MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.outlineVariant
                 },
@@ -436,7 +442,7 @@ private fun ColorSwatch(
                 imageVector = Icons.Default.Check,
                 contentDescription = label,
                 tint = Color.White,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
     }
