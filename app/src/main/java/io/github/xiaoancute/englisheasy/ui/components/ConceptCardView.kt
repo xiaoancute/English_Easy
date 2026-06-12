@@ -3,13 +3,13 @@ package io.github.xiaoancute.englisheasy.ui.components
 import android.speech.tts.TextToSpeech
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -155,7 +155,7 @@ private fun WordHeader(
     onCopyClick: (() -> Unit)?,
     onRefreshClick: (() -> Unit)?,
 ) {
-    QuietSurface(contentPadding = 14.dp) {
+    SurfaceCard(tone = SurfaceTone.Hero) {
         Row(
             modifier = Modifier.fillMaxWidth(1f),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -163,9 +163,9 @@ private fun WordHeader(
         ) {
             Text(
                 text = word,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
@@ -189,13 +189,13 @@ private fun WordHeader(
 private fun EntryTypePill(entryType: EntryType) {
     Surface(
         shape = RoundedCornerShape(EnglishEasySpacing.Radius),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
     ) {
         Text(
             text = entryType.label,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     }
 }
@@ -218,7 +218,7 @@ private fun HeaderActions(
                 Icon(
                     imageVector = Icons.Default.Share,
                     contentDescription = "分享",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }
@@ -227,7 +227,7 @@ private fun HeaderActions(
                 Icon(
                     imageVector = Icons.Default.ContentCopy,
                     contentDescription = "复制",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }
@@ -236,7 +236,7 @@ private fun HeaderActions(
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = "重新生成",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }
@@ -248,7 +248,7 @@ private fun HeaderActions(
                     tint = if (isFavorite) {
                         MaterialTheme.colorScheme.tertiary
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.colorScheme.onPrimaryContainer
                     },
                 )
             }
@@ -291,8 +291,8 @@ private fun SingleCardBody(
 /** 核心概念：作为学习笔记的主段落，用轻量底色突出，但不做大装饰卡。 */
 @Composable
 private fun CoreConceptBlock(core: CoreConcept) {
-    QuietSurface(tonal = true, contentPadding = 16.dp) {
-        SectionHeader(title = "核心概念")
+    SurfaceCard(tone = SurfaceTone.Tonal) {
+        SectionLabel("核心概念")
         Text(
             text = core.picture,
             style = MaterialTheme.typography.titleLarge,
@@ -313,9 +313,8 @@ private fun CoreConceptBlock(core: CoreConcept) {
 @Composable
 private fun AnchorChip(word: String) {
     Surface(
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {
         Text(
             text = word,
@@ -330,9 +329,9 @@ private fun AnchorChip(word: String) {
 /** 单个场景：例句 + 朗读，画面解释另起一行，保持轻量行块。 */
 @Composable
 private fun ScenarioItem(sc: Scenario, onSpeak: (String) -> Unit) {
-    QuietSurface(contentPadding = 12.dp) {
+    SurfaceCard(contentPadding = 16.dp) {
         Row(
-            modifier = Modifier.fillMaxWidth(1f),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -341,15 +340,13 @@ private fun ScenarioItem(sc: Scenario, onSpeak: (String) -> Unit) {
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).padding(end = 8.dp),
             )
-            IconButton(onClick = { onSpeak(sc.englishExample) }) {
-                Icon(
-                    imageVector = Icons.Default.VolumeUp,
-                    contentDescription = "朗读例句",
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
+            TonalIconButton(
+                icon = Icons.Default.VolumeUp,
+                contentDescription = "朗读例句",
+                onClick = { onSpeak(sc.englishExample) },
+            )
         }
         Text(
             text = sc.pictureExplanation,
@@ -389,7 +386,7 @@ private fun TaggedLine(
         modifier = Modifier.fillMaxWidth(1f),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Surface(shape = RoundedCornerShape(6.dp), color = tagBg) {
+        Surface(shape = RoundedCornerShape(8.dp), color = tagBg) {
             Text(
                 text = tag,
                 style = MaterialTheme.typography.labelMedium,
@@ -420,7 +417,7 @@ private fun BranchesSection(
         },
     )
     branches.forEachIndexed { idx, branch ->
-        QuietSurface(tonal = true, contentPadding = 12.dp) {
+        SurfaceCard(tone = SurfaceTone.Tonal) {
             SectionHeader(
                 title = "分支 ${idx + 1}",
                 subtitle = branch.relationNote?.let { "共同祖源：$it" },
@@ -446,6 +443,7 @@ private fun UserNoteSection(
             minLines = 3,
             maxLines = 6,
             placeholder = { Text("把核心画面用自己的话写成一句") },
+            shape = RoundedCornerShape(16.dp),
         )
     }
 }
@@ -468,6 +466,7 @@ private fun UserExampleSection(
             minLines = 2,
             maxLines = 4,
             placeholder = { Text("I would use this word when...") },
+            shape = RoundedCornerShape(16.dp),
         )
     }
 }
