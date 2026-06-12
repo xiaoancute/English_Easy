@@ -23,10 +23,14 @@ import androidx.compose.ui.unit.dp
 object EnglishEasySpacing {
     val PageHorizontal = 16.dp
     val PageVertical = 12.dp
-    val SectionGap = 14.dp
-    val ItemGap = 8.dp
-    val SurfacePadding = 14.dp
-    val Radius = 8.dp
+    val SectionGap = 18.dp
+    val ItemGap = 12.dp
+    val SurfacePadding = 20.dp
+    val CardRadius = 24.dp
+    val HeroRadius = 28.dp
+    val PillRadius = 28.dp
+    // 旧字段保留以兼容暂未改的调用点；Task 4 后可清理
+    val Radius = 24.dp
 }
 
 @Composable
