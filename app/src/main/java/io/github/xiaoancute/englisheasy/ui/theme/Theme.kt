@@ -31,6 +31,7 @@ fun EnglishEasyTheme(
         else -> rememberDynamicColorScheme(
             seedColor = seedColor,
             isDark = darkTheme,
+            isAmoled = false,
             style = PaletteStyle.TonalSpot, // Pixel 默认风格
         )
     }
