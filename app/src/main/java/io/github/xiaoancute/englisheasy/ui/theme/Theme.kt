@@ -37,8 +37,7 @@ fun EnglishEasyTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        // TODO: Task 3 - uncomment when EnglishEasyShapes is implemented
-        // shapes = EnglishEasyShapes,
+        shapes = EnglishEasyShapes,
         typography = EnglishEasyTypography,
         content = content,
     )

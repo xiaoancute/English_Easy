@@ -188,7 +188,7 @@ private fun WordHeader(
 @Composable
 private fun EntryTypePill(entryType: EntryType) {
     Surface(
-        shape = RoundedCornerShape(EnglishEasySpacing.Radius),
+        shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
     ) {
         Text(

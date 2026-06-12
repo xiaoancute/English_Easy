@@ -35,8 +35,6 @@ object EnglishEasySpacing {
     val CardRadius = 24.dp
     val HeroRadius = 28.dp
     val PillRadius = 28.dp
-    // 旧字段保留以兼容暂未改的调用点；Task 4 后可清理
-    val Radius = 24.dp
 }
 
 enum class SurfaceTone { Plain, Tonal, Hero }
