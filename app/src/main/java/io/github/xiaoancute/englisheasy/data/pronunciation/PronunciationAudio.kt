@@ -6,8 +6,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.content
-import kotlinx.serialization.json.isString
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -56,16 +55,15 @@ internal fun firstDictionaryAudioUrl(json: String): String? {
         .filterIsInstance<JsonObject>()
         .mapNotNull { phonetic ->
             (phonetic["audio"] as? JsonPrimitive)
-                ?.takeIf { it.isString }
-                ?.content
+                ?.contentOrNull
                 ?.trim()
-                ?.takeIf { it.isNotEmpty() }
+                ?.let(::normalizeAudioUrl)
         }
-        .map(::normalizeAudioUrl)
         .firstOrNull()
 }
 
-private fun normalizeAudioUrl(url: String): String = when {
+private fun normalizeAudioUrl(url: String): String? = when {
     url.startsWith("//") -> "https:$url"
-    else -> url
+    url.startsWith("https://") || url.startsWith("http://") -> url
+    else -> null
 }
