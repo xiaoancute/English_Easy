@@ -1,5 +1,8 @@
 package io.github.xiaoancute.englisheasy.ui.components
 
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +19,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,11 +28,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,6 +47,8 @@ import io.github.xiaoancute.englisheasy.data.model.EntryType
 import io.github.xiaoancute.englisheasy.data.model.Misconception
 import io.github.xiaoancute.englisheasy.data.model.Scenario
 import io.github.xiaoancute.englisheasy.data.model.label
+import io.github.xiaoancute.englisheasy.data.pronunciation.PronunciationAudio
+import kotlinx.coroutines.launch
 
 @Composable
 fun ConceptCardView(
@@ -56,6 +65,15 @@ fun ConceptCardView(
     scrollable: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val player = remember { MediaPlayer() }
+    DisposableEffect(player) {
+        onDispose {
+            player.release()
+        }
+    }
+
     // 换词时整卡淡入 + 轻微上移
     val enterAnim = remember(card.word) { Animatable(0f) }
     LaunchedEffect(card.word) {
@@ -88,6 +106,18 @@ fun ConceptCardView(
             onShareClick = onShareClick,
             onCopyClick = onCopyClick,
             onRefreshClick = onRefreshClick,
+            onPronounceClick = {
+                scope.launch {
+                    val audioUrl = PronunciationAudio.findUrl(card.word)
+                    if (audioUrl == null) {
+                        Toast.makeText(context, "暂无真人发音", Toast.LENGTH_SHORT).show()
+                    } else {
+                        player.playPronunciation(audioUrl) {
+                            Toast.makeText(context, "发音播放失败", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            },
         )
 
         if (card.branches != null) {
@@ -125,6 +155,7 @@ private fun WordHeader(
     onShareClick: (() -> Unit)?,
     onCopyClick: (() -> Unit)?,
     onRefreshClick: (() -> Unit)?,
+    onPronounceClick: () -> Unit,
 ) {
     SurfaceCard(tone = SurfaceTone.Hero) {
         Row(
@@ -152,6 +183,7 @@ private fun WordHeader(
             onShareClick = onShareClick,
             onCopyClick = onCopyClick,
             onRefreshClick = onRefreshClick,
+            onPronounceClick = onPronounceClick,
         )
     }
 }
@@ -178,6 +210,7 @@ private fun HeaderActions(
     onShareClick: (() -> Unit)?,
     onCopyClick: (() -> Unit)?,
     onRefreshClick: (() -> Unit)?,
+    onPronounceClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(1f),
@@ -210,6 +243,13 @@ private fun HeaderActions(
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
+        }
+        IconButton(onClick = onPronounceClick) {
+            Icon(
+                imageVector = Icons.Default.VolumeUp,
+                contentDescription = "播放真人发音",
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
         }
         if (onFavoriteChange != null) {
             IconButton(onClick = { onFavoriteChange(!isFavorite) }) {
@@ -424,6 +464,30 @@ private fun UserExampleSection(
             placeholder = { Text("I would use this word when...") },
             shape = RoundedCornerShape(16.dp),
         )
+    }
+}
+
+private fun MediaPlayer.playPronunciation(
+    audioUrl: String,
+    onError: () -> Unit,
+) {
+    runCatching {
+        reset()
+        setAudioAttributes(
+            AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .build(),
+        )
+        setDataSource(audioUrl)
+        setOnPreparedListener { it.start() }
+        setOnErrorListener { _, _, _ ->
+            onError()
+            true
+        }
+        prepareAsync()
+    }.onFailure {
+        onError()
     }
 }
 
