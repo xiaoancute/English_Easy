@@ -1,6 +1,5 @@
 package io.github.xiaoancute.englisheasy.ui.components
 
-import android.speech.tts.TextToSpeech
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +16,6 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,14 +24,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -45,7 +40,6 @@ import io.github.xiaoancute.englisheasy.data.model.EntryType
 import io.github.xiaoancute.englisheasy.data.model.Misconception
 import io.github.xiaoancute.englisheasy.data.model.Scenario
 import io.github.xiaoancute.englisheasy.data.model.label
-import java.util.Locale
 
 @Composable
 fun ConceptCardView(
@@ -62,27 +56,6 @@ fun ConceptCardView(
     scrollable: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val ttsReady = remember { mutableStateOf(false) }
-    val tts = remember {
-        TextToSpeech(context) { status ->
-            ttsReady.value = status == TextToSpeech.SUCCESS
-        }
-    }
-
-    LaunchedEffect(ttsReady.value) {
-        if (ttsReady.value) {
-            tts.language = Locale.US
-        }
-    }
-
-    DisposableEffect(tts) {
-        onDispose {
-            tts.stop()
-            tts.shutdown()
-        }
-    }
-
     // 换词时整卡淡入 + 轻微上移
     val enterAnim = remember(card.word) { Animatable(0f) }
     LaunchedEffect(card.word) {
@@ -120,12 +93,10 @@ fun ConceptCardView(
         if (card.branches != null) {
             BranchesSection(
                 branches = card.branches,
-                onSpeak = { text -> tts.speakExample(text, ttsReady.value) },
             )
         } else {
             SingleCardBody(
                 card = card,
-                onSpeak = { text -> tts.speakExample(text, ttsReady.value) },
             )
         }
 
@@ -259,7 +230,6 @@ private fun HeaderActions(
 @Composable
 private fun SingleCardBody(
     card: ConceptCard,
-    onSpeak: (String) -> Unit,
 ) {
     card.coreConcept?.let { core ->
         CoreConceptBlock(core)
@@ -277,7 +247,7 @@ private fun SingleCardBody(
 
     card.scenarios?.takeIf { it.isNotEmpty() }?.let { scenarios ->
         Section(title = "典型场景") {
-            scenarios.forEach { sc -> ScenarioItem(sc, onSpeak) }
+            scenarios.forEach { sc -> ScenarioItem(sc) }
         }
     }
 
@@ -326,28 +296,16 @@ private fun AnchorChip(word: String) {
     }
 }
 
-/** 单个场景：例句 + 朗读，画面解释另起一行，保持轻量行块。 */
+/** 单个场景：例句 + 画面解释，保持轻量行块。 */
 @Composable
-private fun ScenarioItem(sc: Scenario, onSpeak: (String) -> Unit) {
+private fun ScenarioItem(sc: Scenario) {
     SurfaceCard(contentPadding = 16.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = sc.englishExample,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f).padding(end = 8.dp),
-            )
-            TonalIconButton(
-                icon = Icons.Default.VolumeUp,
-                contentDescription = "朗读例句",
-                onClick = { onSpeak(sc.englishExample) },
-            )
-        }
+        Text(
+            text = sc.englishExample,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
         Text(
             text = sc.pictureExplanation,
             style = MaterialTheme.typography.bodyMedium,
@@ -407,7 +365,6 @@ private fun TaggedLine(
 @Composable
 private fun BranchesSection(
     branches: List<Branch>,
-    onSpeak: (String) -> Unit,
 ) {
     SectionHeader(
         title = when (branches.firstOrNull()?.type) {
@@ -424,7 +381,6 @@ private fun BranchesSection(
             )
             SingleCardBody(
                 card = branch.card,
-                onSpeak = onSpeak,
             )
         }
     }
@@ -469,14 +425,6 @@ private fun UserExampleSection(
             shape = RoundedCornerShape(16.dp),
         )
     }
-}
-
-private fun TextToSpeech.speakExample(
-    text: String,
-    isReady: Boolean,
-) {
-    if (!isReady) return
-    speak(text, TextToSpeech.QUEUE_FLUSH, null, text)
 }
 
 @Composable
