@@ -1,6 +1,7 @@
 package io.github.xiaoancute.englisheasy.ui.components
 
 import android.speech.tts.TextToSpeech
+import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -72,7 +73,9 @@ fun ConceptCardView(
 
     LaunchedEffect(ttsReady.value) {
         if (ttsReady.value) {
-            tts.language = Locale.US
+            val languageResult = tts.setLanguage(Locale.US)
+            ttsReady.value = languageResult != TextToSpeech.LANG_MISSING_DATA &&
+                languageResult != TextToSpeech.LANG_NOT_SUPPORTED
         }
     }
 
@@ -120,12 +123,12 @@ fun ConceptCardView(
         if (card.branches != null) {
             BranchesSection(
                 branches = card.branches,
-                onSpeak = { text -> tts.speakExample(text, ttsReady.value) },
+                onSpeak = { text -> tts.speakExample(text, ttsReady.value, context) },
             )
         } else {
             SingleCardBody(
                 card = card,
-                onSpeak = { text -> tts.speakExample(text, ttsReady.value) },
+                onSpeak = { text -> tts.speakExample(text, ttsReady.value, context) },
             )
         }
 
@@ -474,9 +477,16 @@ private fun UserExampleSection(
 private fun TextToSpeech.speakExample(
     text: String,
     isReady: Boolean,
+    context: android.content.Context,
 ) {
-    if (!isReady) return
-    speak(text, TextToSpeech.QUEUE_FLUSH, null, text)
+    if (!isReady) {
+        Toast.makeText(context, "系统朗读暂不可用", Toast.LENGTH_SHORT).show()
+        return
+    }
+    val result = speak(text, TextToSpeech.QUEUE_FLUSH, null, text)
+    if (result == TextToSpeech.ERROR) {
+        Toast.makeText(context, "朗读失败", Toast.LENGTH_SHORT).show()
+    }
 }
 
 @Composable
