@@ -44,6 +44,9 @@ interface ConceptCardDao {
     @Query("SELECT userExample FROM concept_cards WHERE word = :word LIMIT 1")
     fun observeExample(word: String): Flow<String?>
 
+    @Query("SELECT sourceSentence FROM concept_cards WHERE word = :word LIMIT 1")
+    fun observeSourceSentence(word: String): Flow<String?>
+
     @Query("UPDATE concept_cards SET isFavorite = :isFavorite WHERE word = :word")
     suspend fun setFavorite(word: String, isFavorite: Boolean)
 

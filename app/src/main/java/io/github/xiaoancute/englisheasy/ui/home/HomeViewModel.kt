@@ -51,6 +51,7 @@ class HomeViewModel @Inject constructor(
     private var favoriteJob: Job? = null
     private var noteJob: Job? = null
     private var exampleJob: Job? = null
+    private var sourceSentenceJob: Job? = null
 
     /** 是否已配置可用的 Provider；初始乐观为 true，避免已配置用户看到引导闪烁。 */
     val isConfigured: StateFlow<Boolean> = settings.configFlow
@@ -70,6 +71,7 @@ class HomeViewModel @Inject constructor(
         favoriteJob?.cancel()
         noteJob?.cancel()
         exampleJob?.cancel()
+        sourceSentenceJob?.cancel()
         viewModelScope.launch {
             repo.lookup(
                 word = trimmed,
@@ -90,6 +92,7 @@ class HomeViewModel @Inject constructor(
                     observeFavorite(card.word)
                     observeNote(card.word)
                     observeExample(card.word)
+                    observeSourceSentence(card.word)
                 },
                 onFailure = { _state.value = HomeUiState.Error(it.message ?: "未知错误") },
             )
@@ -175,6 +178,7 @@ class HomeViewModel @Inject constructor(
         favoriteJob?.cancel()
         noteJob?.cancel()
         exampleJob?.cancel()
+        sourceSentenceJob?.cancel()
         _state.value = HomeUiState.Idle
     }
 
@@ -209,6 +213,18 @@ class HomeViewModel @Inject constructor(
                 val current = _state.value as? HomeUiState.Success
                 if (current != null && current.card.word.equals(word, ignoreCase = true)) {
                     _state.value = current.copy(userExample = userExample)
+                }
+            }
+        }
+    }
+
+    private fun observeSourceSentence(word: String) {
+        sourceSentenceJob?.cancel()
+        sourceSentenceJob = viewModelScope.launch {
+            repo.observeSourceSentence(word).collect { sourceSentence ->
+                val current = _state.value as? HomeUiState.Success
+                if (current != null && current.card.word.equals(word, ignoreCase = true)) {
+                    _state.value = current.copy(contextSentence = sourceSentence)
                 }
             }
         }

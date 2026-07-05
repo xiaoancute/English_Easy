@@ -53,7 +53,11 @@ class HistoryViewModel @Inject constructor(
 
     fun exportText(entity: ConceptCardEntity): String? {
         return runCatching {
-            entity.toCard(json).toShareText(entity.userNote, entity.userExample)
+            entity.toCard(json).toShareText(
+                userNote = entity.userNote,
+                sourceSentence = entity.sourceSentence,
+                userExample = entity.userExample,
+            )
         }.getOrNull()
     }
 }

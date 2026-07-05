@@ -187,6 +187,7 @@ private fun HistoryItem(
     onCopy: () -> Unit,
 ) {
     val hasBadges = entity.userNote.isNotBlank() ||
+        entity.sourceSentence.isNotBlank() ||
         entity.userExample.isNotBlank() ||
         entity.promptVersion < CURRENT_PROMPT_VERSION
 
@@ -223,8 +224,23 @@ private fun HistoryItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (entity.sourceSentence.isNotBlank()) {
+                        Text(
+                            text = entity.sourceSentence,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                        )
+                    }
                     if (hasBadges) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (entity.sourceSentence.isNotBlank()) {
+                                InlineBadge(
+                                    icon = Icons.Default.EditNote,
+                                    text = "有原句",
+                                    contentDescription = "有来源句子",
+                                )
+                            }
                             if (entity.userNote.isNotBlank()) {
                                 InlineBadge(
                                     icon = Icons.Default.EditNote,

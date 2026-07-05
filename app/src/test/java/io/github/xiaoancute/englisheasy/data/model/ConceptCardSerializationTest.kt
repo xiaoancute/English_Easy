@@ -49,11 +49,14 @@ class ConceptCardSerializationTest {
 
         val text = card.toShareText(
             userNote = "不是能力，是能不能被占用。",
+            sourceSentence = "Are you available after class?",
             userExample = "I am available after class.",
         )
 
         assertTrue(text.contains("## 我的理解"))
         assertTrue(text.contains("不是能力，是能不能被占用。"))
+        assertTrue(text.contains("## 来源句子"))
+        assertTrue(text.contains("Are you available after class?"))
         assertTrue(text.contains("## 我的例句"))
         assertTrue(text.contains("I am available after class."))
     }
@@ -77,10 +80,12 @@ class ConceptCardSerializationTest {
         val entity = ConceptCardEntity.fromCard(
             card = card,
             json = Json,
+            sourceSentence = "Let's take a break after this page.",
             userExample = "Let's take a break after this page.",
         )
 
         assertEquals("take a break", entity.word)
+        assertEquals("Let's take a break after this page.", entity.sourceSentence)
         assertEquals("Let's take a break after this page.", entity.userExample)
     }
 

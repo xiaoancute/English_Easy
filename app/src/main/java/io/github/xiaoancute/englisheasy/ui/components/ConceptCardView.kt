@@ -9,12 +9,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
@@ -31,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import io.github.xiaoancute.englisheasy.data.llm.ExampleFeedback
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.xiaoancute.englisheasy.data.llm.ExampleFeedback
 import io.github.xiaoancute.englisheasy.data.model.Branch
 import io.github.xiaoancute.englisheasy.data.model.BranchType
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
@@ -65,6 +65,7 @@ fun ConceptCardView(
     onRefreshClick: (() -> Unit)? = null,
     userNote: String = "",
     onNoteChange: ((String) -> Unit)? = null,
+    sourceSentence: String = "",
     userExample: String = "",
     onExampleChange: ((String) -> Unit)? = null,
     onReviewExample: (() -> Unit)? = null,
@@ -129,6 +130,10 @@ fun ConceptCardView(
             },
         )
 
+        if (sourceSentence.isNotBlank()) {
+            SourceSentenceSection(sourceSentence)
+        }
+
         if (card.branches != null) {
             BranchesSection(
                 branches = card.branches,
@@ -154,6 +159,20 @@ fun ConceptCardView(
                 isReviewingExample = isReviewingExample,
                 feedback = exampleFeedback,
                 feedbackError = exampleFeedbackError,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SourceSentenceSection(sourceSentence: String) {
+    Section(title = "来源句子") {
+        SurfaceCard(tone = SurfaceTone.Tonal, contentPadding = 16.dp) {
+            Text(
+                text = sourceSentence,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium,
             )
         }
     }

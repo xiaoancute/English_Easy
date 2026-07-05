@@ -43,6 +43,10 @@ class ConceptRepository @Inject constructor(
         return dao.observeExample(normalizeEntry(word)).map { it.orEmpty() }
     }
 
+    fun observeSourceSentence(word: String): Flow<String> {
+        return dao.observeSourceSentence(normalizeEntry(word)).map { it.orEmpty() }
+    }
+
     suspend fun lookup(
         word: String,
         contextSentence: String = "",
@@ -78,6 +82,7 @@ class ConceptRepository @Inject constructor(
                 card = card,
                 json = json,
                 isFavorite = cached?.isFavorite == true,
+                sourceSentence = normalizedContext.ifBlank { cached?.sourceSentence.orEmpty() },
                 userNote = cached?.userNote.orEmpty(),
                 userExample = cached?.userExample.orEmpty(),
                 reviewDueAt = cached?.reviewDueAt ?: System.currentTimeMillis(),
