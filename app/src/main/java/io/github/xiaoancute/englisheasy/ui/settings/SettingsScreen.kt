@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -55,11 +58,11 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.settings.PresetColors
+import io.github.xiaoancute.englisheasy.data.settings.ProviderConnectionResult
 import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
+import io.github.xiaoancute.englisheasy.data.settings.ProviderPreset
 import io.github.xiaoancute.englisheasy.data.settings.ThemeConfig
 import io.github.xiaoancute.englisheasy.ui.about.AboutScreen
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
 import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
 import io.github.xiaoancute.englisheasy.ui.components.SurfaceCard
 import kotlinx.coroutines.launch
@@ -78,8 +81,10 @@ fun SettingsScreen(
     var model by remember { mutableStateOf(saved.model) }
     var keyVisible by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    var selectedProvider by remember { mutableStateOf(ProviderPreset.match(saved)) }
     var selectedColor by remember { mutableStateOf(savedTheme.themeColor) }
     var useDynamicColor by remember { mutableStateOf(savedTheme.useDynamicColor) }
+    var isTestingConnection by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -92,6 +97,7 @@ fun SettingsScreen(
         apiKey = saved.apiKey
         baseUrl = saved.baseUrl
         model = saved.model
+        selectedProvider = ProviderPreset.match(saved)
     }
 
     LaunchedEffect(savedTheme) {
@@ -123,11 +129,58 @@ fun SettingsScreen(
                 apiKey = apiKey,
                 baseUrl = baseUrl,
                 model = model,
+                selectedProvider = selectedProvider,
                 keyVisible = keyVisible,
+                isTestingConnection = isTestingConnection,
                 onApiKeyChange = { apiKey = it },
-                onBaseUrlChange = { baseUrl = it },
+                onBaseUrlChange = {
+                    baseUrl = it
+                    selectedProvider = ProviderPreset.match(
+                        ProviderConfig(
+                            apiKey = apiKey,
+                            baseUrl = it,
+                            model = model,
+                        ),
+                    )
+                },
                 onModelChange = { model = it },
+                onProviderSelected = { provider ->
+                    selectedProvider = provider
+                    val next = provider.applyTo(
+                        ProviderConfig(
+                            apiKey = apiKey,
+                            baseUrl = baseUrl,
+                            model = model,
+                        ),
+                    )
+                    apiKey = next.apiKey
+                    baseUrl = next.baseUrl
+                    model = next.model
+                },
                 onToggleKeyVisible = { keyVisible = !keyVisible },
+                onTest = {
+                    if (!isTestingConnection) {
+                        isTestingConnection = true
+                        scope.launch {
+                            try {
+                                val result = runCatching {
+                                    viewModel.testConnection(
+                                        ProviderConfig(
+                                            apiKey = apiKey.trim(),
+                                            baseUrl = baseUrl.trim(),
+                                            model = model.trim(),
+                                        ),
+                                    )
+                                }.getOrElse {
+                                    ProviderConnectionResult.Failure(it.message ?: "测试连接失败")
+                                }
+                                snackbarHostState.showSnackbar(result.message)
+                            } finally {
+                                isTestingConnection = false
+                            }
+                        }
+                    }
+                },
                 onSave = {
                     viewModel.save(
                         ProviderConfig(
@@ -170,16 +223,21 @@ fun SettingsScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AiServiceSection(
     apiKey: String,
     baseUrl: String,
     model: String,
+    selectedProvider: ProviderPreset,
     keyVisible: Boolean,
+    isTestingConnection: Boolean,
     onApiKeyChange: (String) -> Unit,
     onBaseUrlChange: (String) -> Unit,
     onModelChange: (String) -> Unit,
+    onProviderSelected: (ProviderPreset) -> Unit,
     onToggleKeyVisible: () -> Unit,
+    onTest: () -> Unit,
     onSave: () -> Unit,
 ) {
     val configured = apiKey.isNotBlank() && baseUrl.isNotBlank() && model.isNotBlank()
@@ -194,6 +252,27 @@ private fun AiServiceSection(
             )
         },
     ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = "服务商",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ProviderPreset.entries.forEach { provider ->
+                    ProviderChip(
+                        provider = provider,
+                        selected = selectedProvider == provider,
+                        onClick = { onProviderSelected(provider) },
+                    )
+                }
+            }
+        }
+
         OutlinedTextField(
             value = baseUrl,
             onValueChange = onBaseUrlChange,
@@ -201,7 +280,7 @@ private fun AiServiceSection(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            supportingText = { Text("例：https://api.openai.com/v1/ 或 https://api.deepseek.com") },
+            supportingText = { Text("预设会自动填写；自定义服务需兼容 OpenAI /models 与 /chat/completions") },
         )
 
         OutlinedTextField(
@@ -211,7 +290,7 @@ private fun AiServiceSection(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            supportingText = { Text("例：gpt-5-mini / deepseek-v4-flash / kimi-k2.6") },
+            supportingText = { Text("预设会填推荐模型，也可以手动改成账号可用的模型") },
         )
 
         OutlinedTextField(
@@ -231,15 +310,61 @@ private fun AiServiceSection(
                     )
                 }
             },
+            supportingText = { Text("本地 Ollama 可保留预设填入的 ollama") },
         )
 
-        Button(
-            onClick = onSave,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("保存 AI 配置")
+            OutlinedButton(
+                onClick = onTest,
+                enabled = !isTestingConnection,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+            ) {
+                Text(if (isTestingConnection) "测试中..." else "测试连接")
+            }
+            Button(
+                onClick = onSave,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+            ) {
+                Text("保存配置")
+            }
         }
+    }
+}
+
+@Composable
+private fun ProviderChip(
+    provider: ProviderPreset,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.clickable(onClick = onClick),
+        color = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        },
+        contentColor = if (selected) {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+    ) {
+        Text(
+            text = provider.label,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        )
     }
 }
 

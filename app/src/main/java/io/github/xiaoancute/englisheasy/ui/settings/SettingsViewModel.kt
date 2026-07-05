@@ -3,6 +3,8 @@ package io.github.xiaoancute.englisheasy.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.xiaoancute.englisheasy.data.settings.ProviderConnectionResult
+import io.github.xiaoancute.englisheasy.data.settings.ProviderConnectionTester
 import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
 import io.github.xiaoancute.englisheasy.data.settings.SettingsRepository
 import io.github.xiaoancute.englisheasy.data.settings.ThemeConfig
@@ -15,6 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
+    private val connectionTester: ProviderConnectionTester,
 ) : ViewModel() {
 
     val config: StateFlow<ProviderConfig> = settings.configFlow
@@ -41,5 +44,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settings.saveTheme(theme)
         }
+    }
+
+    suspend fun testConnection(cfg: ProviderConfig): ProviderConnectionResult {
+        return connectionTester.test(cfg)
     }
 }

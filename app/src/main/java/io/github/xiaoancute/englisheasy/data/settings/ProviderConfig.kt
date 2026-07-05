@@ -18,7 +18,7 @@ data class ProviderConfig(
         val DEFAULT = ProviderConfig(
             apiKey = "",
             baseUrl = "https://api.openai.com/v1/",
-            model = "gpt-5-mini",
+            model = "gpt-5.4-mini",
         )
     }
 }
