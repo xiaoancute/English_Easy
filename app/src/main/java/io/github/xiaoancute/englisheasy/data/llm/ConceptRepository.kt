@@ -43,20 +43,34 @@ class ConceptRepository @Inject constructor(
         return dao.observeExample(normalizeEntry(word)).map { it.orEmpty() }
     }
 
-    suspend fun lookup(word: String, forceRefresh: Boolean = false): Result<ConceptCard> = runCatching {
+    suspend fun lookup(
+        word: String,
+        contextSentence: String = "",
+        forceRefresh: Boolean = false,
+    ): Result<ConceptCard> = runCatching {
         val normalized = normalizeEntry(word)
+        val normalizedContext = contextSentence.trim()
         require(normalized.isNotEmpty()) { "词或短语不能为空" }
 
         // 1. 查缓存
         val cached = dao.get(normalized)
-        if (!forceRefresh && cached != null && cached.promptVersion == CURRENT_PROMPT_VERSION) {
+        if (
+            normalizedContext.isBlank() &&
+            !forceRefresh &&
+            cached != null &&
+            cached.promptVersion == CURRENT_PROMPT_VERSION
+        ) {
             return@runCatching cached.toCard(json)
         }
 
         // 2. 缓存未命中或版本过期 → 调用 LLM
         val cfg = settings.load()
         require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
-        val card = lookupWithJsonRetry(normalized, cfg)
+        val card = lookupWithJsonRetry(
+            word = normalized,
+            contextSentence = normalizedContext,
+            cfg = cfg,
+        )
 
         // 3. 存入缓存
         dao.insert(
@@ -95,16 +109,18 @@ class ConceptRepository @Inject constructor(
         dao.setExample(normalized, example)
     }
 
-    private suspend fun performLookup(
+    suspend fun reviewExample(
         word: String,
-        cfg: ProviderConfig,
-        retryHint: String?,
-    ): ConceptCard {
-        val userMessage = if (retryHint != null) {
-            "上次响应解析失败：$retryHint\n请只输出合法 JSON，不要任何 Markdown 包裹或前后说明。\n\n查询词或短语：$word"
-        } else {
-            word
-        }
+        userExample: String,
+        contextSentence: String = "",
+    ): Result<ExampleFeedback> = runCatching {
+        val normalized = normalizeEntry(word)
+        val trimmedExample = userExample.trim()
+        require(normalized.isNotEmpty()) { "词或短语不能为空" }
+        require(trimmedExample.isNotEmpty()) { "请先写一句自己的英文例句" }
+
+        val cfg = settings.load()
+        require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
 
         val response = api.chat(
             fullUrl = "${cfg.baseUrl.trimEnd('/')}/chat/completions",
@@ -112,8 +128,53 @@ class ConceptRepository @Inject constructor(
             request = ChatRequest(
                 model = cfg.model,
                 messages = listOf(
+                    ChatMessage(role = "system", content = EXAMPLE_FEEDBACK_SYSTEM_PROMPT),
+                    ChatMessage(
+                        role = "user",
+                        content = buildExampleFeedbackUserMessage(
+                            word = normalized,
+                            userExample = trimmedExample,
+                            contextSentence = contextSentence,
+                        ),
+                    ),
+                ),
+                temperature = 0.2,
+            ),
+        )
+
+        val raw = response.choices.firstOrNull()?.message?.content
+            ?: throw LlmResponseFormatException("LLM 响应里没有 choices/message")
+        val cleanJson = extractJson(raw) ?: throw LlmResponseFormatException("响应里找不到 JSON 主体")
+        try {
+            json.decodeFromString<ExampleFeedback>(cleanJson)
+        } catch (error: SerializationException) {
+            throw LlmResponseFormatException("JSON 解析失败：${error.message}", error)
+        }
+    }.recoverCatching {
+        throw it.toUserFacingException()
+    }
+
+    private suspend fun performLookup(
+        word: String,
+        contextSentence: String,
+        cfg: ProviderConfig,
+        retryHint: String?,
+    ): ConceptCard {
+        val response = api.chat(
+            fullUrl = "${cfg.baseUrl.trimEnd('/')}/chat/completions",
+            authorization = "Bearer ${cfg.apiKey}",
+            request = ChatRequest(
+                model = cfg.model,
+                messages = listOf(
                     ChatMessage(role = "system", content = SYSTEM_PROMPT_V3),
-                    ChatMessage(role = "user", content = userMessage),
+                    ChatMessage(
+                        role = "user",
+                        content = buildLookupUserMessage(
+                            word = word,
+                            contextSentence = contextSentence,
+                            retryHint = retryHint,
+                        ),
+                    ),
                 ),
             ),
         )
@@ -130,12 +191,13 @@ class ConceptRepository @Inject constructor(
 
     private suspend fun lookupWithJsonRetry(
         word: String,
+        contextSentence: String,
         cfg: ProviderConfig,
     ): ConceptCard {
         return try {
-            performLookup(word, cfg, retryHint = null)
+            performLookup(word, contextSentence, cfg, retryHint = null)
         } catch (firstError: LlmResponseFormatException) {
-            performLookup(word, cfg, retryHint = firstError.message)
+            performLookup(word, contextSentence, cfg, retryHint = firstError.message)
         } catch (error: Throwable) {
             throw error
         }

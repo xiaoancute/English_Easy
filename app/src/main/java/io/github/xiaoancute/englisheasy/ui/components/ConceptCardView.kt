@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
@@ -21,12 +23,15 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import io.github.xiaoancute.englisheasy.data.llm.ExampleFeedback
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -62,6 +67,10 @@ fun ConceptCardView(
     onNoteChange: ((String) -> Unit)? = null,
     userExample: String = "",
     onExampleChange: ((String) -> Unit)? = null,
+    onReviewExample: (() -> Unit)? = null,
+    isReviewingExample: Boolean = false,
+    exampleFeedback: ExampleFeedback? = null,
+    exampleFeedbackError: String? = null,
     scrollable: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -141,6 +150,10 @@ fun ConceptCardView(
             UserExampleSection(
                 example = userExample,
                 onExampleChange = onExampleChange,
+                onReviewExample = onReviewExample,
+                isReviewingExample = isReviewingExample,
+                feedback = exampleFeedback,
+                feedbackError = exampleFeedbackError,
             )
         }
     }
@@ -448,6 +461,10 @@ private fun UserNoteSection(
 private fun UserExampleSection(
     example: String,
     onExampleChange: (String) -> Unit,
+    onReviewExample: (() -> Unit)?,
+    isReviewingExample: Boolean,
+    feedback: ExampleFeedback?,
+    feedbackError: String?,
 ) {
     Section(title = "我的输出") {
         Text(
@@ -463,6 +480,68 @@ private fun UserExampleSection(
             maxLines = 4,
             placeholder = { Text("I would use this word when...") },
             shape = RoundedCornerShape(16.dp),
+        )
+        if (onReviewExample != null) {
+            Button(
+                onClick = onReviewExample,
+                enabled = !isReviewingExample,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+            ) {
+                if (isReviewingExample) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text("检查例句")
+                }
+            }
+        }
+        feedback?.let { ExampleFeedbackBlock(it) }
+        feedbackError?.let { ExampleFeedbackError(it) }
+    }
+}
+
+@Composable
+private fun ExampleFeedbackBlock(feedback: ExampleFeedback) {
+    SurfaceCard(tone = SurfaceTone.Tonal, contentPadding = 16.dp) {
+        Text(
+            text = feedback.verdict,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = feedback.improvedExample,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium,
+        )
+        Text(
+            text = feedback.reason,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun ExampleFeedbackError(message: String) {
+    SurfaceCard(tone = SurfaceTone.Tonal, contentPadding = 16.dp) {
+        Text(
+            text = "检查失败",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.error,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

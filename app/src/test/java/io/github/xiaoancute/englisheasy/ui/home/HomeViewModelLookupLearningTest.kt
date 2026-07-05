@@ -2,6 +2,7 @@ package io.github.xiaoancute.englisheasy.ui.home
 
 import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
 import io.github.xiaoancute.englisheasy.data.llm.ConceptRepository
+import io.github.xiaoancute.englisheasy.data.llm.ExampleFeedback
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
 import io.github.xiaoancute.englisheasy.data.model.CoreConcept
 import io.github.xiaoancute.englisheasy.data.model.EntryType
@@ -21,6 +22,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelLookupLearningTest {
@@ -40,7 +43,7 @@ class HomeViewModelLookupLearningTest {
     fun studyLookupFailureDoesNotStartLearning() = runHomeViewModelTest {
         val fixture = Fixture()
         coEvery {
-            fixture.repo.lookup("Spring", forceRefresh = false)
+            fixture.repo.lookup("Spring", contextSentence = "", forceRefresh = false)
         } returns Result.failure(IllegalStateException("network failed"))
         val viewModel = fixture.viewModel()
 
@@ -48,6 +51,43 @@ class HomeViewModelLookupLearningTest {
         advanceUntilIdle()
 
         coVerify(exactly = 0) { fixture.learning.startLearning(any()) }
+    }
+
+    @Test
+    fun lookupPassesContextSentenceToRepository() = runHomeViewModelTest {
+        val fixture = Fixture()
+        val viewModel = fixture.viewModel()
+
+        viewModel.lookup(
+            word = " run out of ",
+            contextSentence = "I ran out of time before the exam.",
+        )
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            fixture.repo.lookup(
+                "run out of",
+                contextSentence = "I ran out of time before the exam.",
+                forceRefresh = false,
+            )
+        }
+    }
+
+    @Test
+    fun reviewExampleSuccessUpdatesCurrentCardState() = runHomeViewModelTest {
+        val fixture = Fixture()
+        val viewModel = fixture.viewModel()
+        viewModel.lookup(" Spring ")
+        advanceUntilIdle()
+        viewModel.setExample("Spring is coming.")
+
+        viewModel.reviewExample()
+        advanceUntilIdle()
+
+        val state = assertIs<HomeUiState.Success>(viewModel.state.value)
+        val feedbackState = assertIs<ExampleFeedbackUiState.Success>(state.exampleFeedbackState)
+        assertEquals("自然", feedbackState.feedback.verdict)
+        assertEquals("Spring is coming.", feedbackState.feedback.improvedExample)
     }
 
     @Test
@@ -88,9 +128,36 @@ class HomeViewModelLookupLearningTest {
                 )
             )
             coEvery { repo.lookup("Spring", forceRefresh = false) } returns Result.success(card)
+            coEvery {
+                repo.lookup("Spring", contextSentence = "", forceRefresh = false)
+            } returns Result.success(card)
+            coEvery {
+                repo.lookup(
+                    "run out of",
+                    contextSentence = "I ran out of time before the exam.",
+                    forceRefresh = false,
+                )
+            } returns Result.success(card.copy(word = "run out of"))
+            coEvery {
+                repo.reviewExample(
+                    word = "spring",
+                    userExample = "Spring is coming.",
+                    contextSentence = "",
+                )
+            } returns Result.success(
+                ExampleFeedback(
+                    verdict = "自然",
+                    improvedExample = "Spring is coming.",
+                    reason = "spring 在这里表示春天到来，很自然。",
+                )
+            )
+            coEvery { repo.setExample("spring", "Spring is coming.") } returns Unit
             every { repo.observeFavorite("spring") } returns flowOf(false)
             every { repo.observeNote("spring") } returns flowOf("")
             every { repo.observeExample("spring") } returns flowOf("")
+            every { repo.observeFavorite("run out of") } returns flowOf(false)
+            every { repo.observeNote("run out of") } returns flowOf("")
+            every { repo.observeExample("run out of") } returns flowOf("")
         }
 
         fun viewModel(): HomeViewModel {

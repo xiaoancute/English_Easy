@@ -76,6 +76,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
     val isConfigured by viewModel.isConfigured.collectAsState()
     var input by remember { mutableStateOf("") }
+    var contextSentence by remember { mutableStateOf("") }
     val keyboard = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -85,7 +86,10 @@ fun HomeScreen(
         val normalized = query.trim()
         if (normalized.isBlank()) return
         input = normalized
-        viewModel.lookup(normalized)
+        viewModel.lookup(
+            word = normalized,
+            contextSentence = contextSentence,
+        )
         keyboard?.hide()
     }
 
@@ -93,6 +97,7 @@ fun HomeScreen(
     LaunchedEffect(initialWord, markLearningOnSuccess) {
         if (initialWord != null) {
             input = initialWord
+            contextSentence = ""
             pendingStudyLookupWord = if (markLearningOnSuccess) initialWord else null
             viewModel.lookup(
                 word = initialWord,
@@ -138,17 +143,23 @@ fun HomeScreen(
         ) {
             LookupPanel(
                 input = input,
+                contextSentence = contextSentence,
                 onInputChange = { input = it },
+                onContextSentenceChange = { contextSentence = it },
                 onLookup = { performLookup() },
             )
 
             ResultArea(
                 state = state,
                 isConfigured = isConfigured,
-                onExampleLookup = { performLookup(it) },
+                onExampleLookup = {
+                    contextSentence = ""
+                    performLookup(it)
+                },
                 onFavoriteChange = viewModel::setFavorite,
                 onNoteChange = viewModel::setNote,
                 onExampleChange = viewModel::setExample,
+                onReviewExample = viewModel::reviewExample,
                 onRefresh = viewModel::refreshCurrent,
                 onShare = { card, note, example -> shareCard(context, card, note, example) },
                 onCopy = { card, note, example -> copyCard(context, card, note, example) },
@@ -161,7 +172,9 @@ fun HomeScreen(
 @Composable
 private fun LookupPanel(
     input: String,
+    contextSentence: String,
     onInputChange: (String) -> Unit,
+    onContextSentenceChange: (String) -> Unit,
     onLookup: () -> Unit,
 ) {
     SurfaceCard(tone = SurfaceTone.Tonal) {
@@ -190,6 +203,28 @@ private fun LookupPanel(
             ),
             keyboardActions = KeyboardActions(onSearch = { onLookup() }),
         )
+
+        OutlinedTextField(
+            value = contextSentence,
+            onValueChange = onContextSentenceChange,
+            placeholder = { Text("可选：I ran out of time before the exam.") },
+            minLines = 2,
+            maxLines = 4,
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                imeAction = ImeAction.Default,
+            ),
+            supportingText = { Text("粘贴整句时，英易会优先解释这个词在当前句子里的用法") },
+        )
+
         Button(
             onClick = onLookup,
             modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -208,6 +243,7 @@ private fun ResultArea(
     onFavoriteChange: (Boolean) -> Unit,
     onNoteChange: (String) -> Unit,
     onExampleChange: (String) -> Unit,
+    onReviewExample: () -> Unit,
     onRefresh: () -> Unit,
     onShare: (ConceptCard, String, String) -> Unit,
     onCopy: (ConceptCard, String, String) -> Unit,
@@ -231,6 +267,10 @@ private fun ResultArea(
             onNoteChange = onNoteChange,
             userExample = state.userExample,
             onExampleChange = onExampleChange,
+            onReviewExample = onReviewExample,
+            isReviewingExample = state.exampleFeedbackState is ExampleFeedbackUiState.Loading,
+            exampleFeedback = (state.exampleFeedbackState as? ExampleFeedbackUiState.Success)?.feedback,
+            exampleFeedbackError = (state.exampleFeedbackState as? ExampleFeedbackUiState.Error)?.message,
         )
         is HomeUiState.Error -> ErrorView(message = state.message, onRetry = onRetry)
     }

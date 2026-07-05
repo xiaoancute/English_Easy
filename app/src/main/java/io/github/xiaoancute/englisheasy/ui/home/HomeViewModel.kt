@@ -3,6 +3,7 @@ package io.github.xiaoancute.englisheasy.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.xiaoancute.englisheasy.data.llm.ExampleFeedback
 import io.github.xiaoancute.englisheasy.data.llm.ConceptRepository
 import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
@@ -25,8 +26,17 @@ sealed interface HomeUiState {
         val isFavorite: Boolean,
         val userNote: String,
         val userExample: String,
+        val contextSentence: String = "",
+        val exampleFeedbackState: ExampleFeedbackUiState = ExampleFeedbackUiState.Idle,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
+}
+
+sealed interface ExampleFeedbackUiState {
+    data object Idle : ExampleFeedbackUiState
+    data object Loading : ExampleFeedbackUiState
+    data class Success(val feedback: ExampleFeedback) : ExampleFeedbackUiState
+    data class Error(val message: String) : ExampleFeedbackUiState
 }
 
 @HiltViewModel
@@ -49,23 +59,30 @@ class HomeViewModel @Inject constructor(
 
     fun lookup(
         word: String,
+        contextSentence: String = "",
         forceRefresh: Boolean = false,
         markLearningOnSuccess: Boolean = false,
     ) {
         val trimmed = word.trim()
+        val trimmedContext = contextSentence.trim()
         if (trimmed.isEmpty()) return
         _state.value = HomeUiState.Loading
         favoriteJob?.cancel()
         noteJob?.cancel()
         exampleJob?.cancel()
         viewModelScope.launch {
-            repo.lookup(trimmed, forceRefresh = forceRefresh).fold(
+            repo.lookup(
+                word = trimmed,
+                contextSentence = trimmedContext,
+                forceRefresh = forceRefresh,
+            ).fold(
                 onSuccess = { card ->
                     _state.value = HomeUiState.Success(
                         card = card,
                         isFavorite = false,
                         userNote = "",
                         userExample = "",
+                        contextSentence = trimmedContext,
                     )
                     if (markLearningOnSuccess) {
                         wordLearningStateRepository.startLearning(card.word)
@@ -81,7 +98,11 @@ class HomeViewModel @Inject constructor(
 
     fun refreshCurrent() {
         val current = _state.value as? HomeUiState.Success ?: return
-        lookup(current.card.word, forceRefresh = true)
+        lookup(
+            word = current.card.word,
+            contextSentence = current.contextSentence,
+            forceRefresh = true,
+        )
     }
 
     fun setFavorite(isFavorite: Boolean) {
@@ -102,9 +123,51 @@ class HomeViewModel @Inject constructor(
 
     fun setExample(example: String) {
         val current = _state.value as? HomeUiState.Success ?: return
-        _state.value = current.copy(userExample = example)
+        _state.value = current.copy(
+            userExample = example,
+            exampleFeedbackState = ExampleFeedbackUiState.Idle,
+        )
         viewModelScope.launch {
             repo.setExample(current.card.word, example)
+        }
+    }
+
+    fun reviewExample() {
+        val current = _state.value as? HomeUiState.Success ?: return
+        val example = current.userExample.trim()
+        if (example.isBlank()) {
+            _state.value = current.copy(
+                exampleFeedbackState = ExampleFeedbackUiState.Error("请先写一句自己的英文例句"),
+            )
+            return
+        }
+
+        _state.value = current.copy(exampleFeedbackState = ExampleFeedbackUiState.Loading)
+        viewModelScope.launch {
+            repo.reviewExample(
+                word = current.card.word,
+                userExample = example,
+                contextSentence = current.contextSentence,
+            ).fold(
+                onSuccess = { feedback ->
+                    val latest = _state.value as? HomeUiState.Success
+                    if (latest != null) {
+                        _state.value = latest.copy(
+                            exampleFeedbackState = ExampleFeedbackUiState.Success(feedback),
+                        )
+                    }
+                },
+                onFailure = {
+                    val latest = _state.value as? HomeUiState.Success
+                    if (latest != null) {
+                        _state.value = latest.copy(
+                            exampleFeedbackState = ExampleFeedbackUiState.Error(
+                                it.message ?: "例句检查失败",
+                            ),
+                        )
+                    }
+                },
+            )
         }
     }
 
