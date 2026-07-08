@@ -155,19 +155,38 @@ fun HomeScreen(
                 ),
             verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
         ) {
-            LookupPanel(
-                lookupMode = lookupMode,
-                input = input,
-                contextSentence = contextSentence,
-                onModeChange = {
-                    lookupMode = it
-                    contextSentence = ""
-                    viewModel.reset()
-                },
-                onInputChange = { input = it },
-                onContextSentenceChange = { contextSentence = it },
-                onLookup = { performLookup() },
-            )
+            val showFullLookup = state == HomeUiState.Idle
+            if (showFullLookup) {
+                LookupPanel(
+                    lookupMode = lookupMode,
+                    input = input,
+                    contextSentence = contextSentence,
+                    onModeChange = {
+                        lookupMode = it
+                        contextSentence = ""
+                        viewModel.reset()
+                    },
+                    onInputChange = { input = it },
+                    onContextSentenceChange = { contextSentence = it },
+                    onLookup = { performLookup() },
+                )
+            } else {
+                CompactLookupBar(
+                    lookupMode = lookupMode,
+                    input = input,
+                    onModeChange = {
+                        lookupMode = it
+                        contextSentence = ""
+                        input = ""
+                        viewModel.reset()
+                    },
+                    onInputChange = {
+                        input = it
+                        contextSentence = ""
+                    },
+                    onLookup = { performLookup() },
+                )
+            }
 
             ResultArea(
                 state = state,
@@ -209,6 +228,57 @@ fun HomeScreen(
 }
 
 @Composable
+private fun CompactLookupBar(
+    lookupMode: LookupMode,
+    input: String,
+    onModeChange: (LookupMode) -> Unit,
+    onInputChange: (String) -> Unit,
+    onLookup: () -> Unit,
+) {
+    SurfaceCard(tone = SurfaceTone.Tonal, contentPadding = 12.dp) {
+        ModeSelector(
+            selected = lookupMode,
+            onSelected = onModeChange,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = input,
+                onValueChange = onInputChange,
+                placeholder = { Text(lookupMode.placeholder) },
+                singleLine = true,
+                shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    imeAction = ImeAction.Search,
+                ),
+                keyboardActions = KeyboardActions(onSearch = { onLookup() }),
+            )
+            Button(
+                onClick = onLookup,
+                modifier = Modifier.height(52.dp),
+                shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+            ) {
+                Text("查")
+            }
+        }
+    }
+}
+
+@Composable
 private fun LookupPanel(
     lookupMode: LookupMode,
     input: String,
@@ -237,13 +307,7 @@ private fun LookupPanel(
             value = input,
             onValueChange = onInputChange,
             placeholder = {
-                Text(
-                    when (lookupMode) {
-                        LookupMode.Word -> "spring / break the ice"
-                        LookupMode.Sentence -> "I'm not really in a position to make that call."
-                        LookupMode.Expression -> "这事我现在没法决定，不是我不愿意，是我没权限。"
-                    },
-                )
+                Text(lookupMode.placeholder)
             },
             singleLine = lookupMode == LookupMode.Word,
             minLines = if (lookupMode == LookupMode.Word) 1 else 3,
@@ -519,6 +583,13 @@ private enum class LookupMode {
     Sentence,
     Expression,
 }
+
+private val LookupMode.placeholder: String
+    get() = when (this) {
+        LookupMode.Word -> "spring / break the ice"
+        LookupMode.Sentence -> "I'm not really in a position to make that call."
+        LookupMode.Expression -> "这事我现在没法决定，不是我不愿意，是我没权限。"
+    }
 
 @Composable
 private fun IdleHint(
