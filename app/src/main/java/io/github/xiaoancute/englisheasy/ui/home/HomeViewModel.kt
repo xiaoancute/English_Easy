@@ -7,6 +7,7 @@ import io.github.xiaoancute.englisheasy.data.llm.ExampleFeedback
 import io.github.xiaoancute.englisheasy.data.llm.ConceptRepository
 import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.model.ExpressionRescueCard
 import io.github.xiaoancute.englisheasy.data.model.SentenceCard
 import io.github.xiaoancute.englisheasy.data.settings.SettingsRepository
 import kotlinx.coroutines.Job
@@ -32,6 +33,9 @@ sealed interface HomeUiState {
     ) : HomeUiState
     data class SentenceSuccess(
         val card: SentenceCard,
+    ) : HomeUiState
+    data class ExpressionSuccess(
+        val card: ExpressionRescueCard,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
@@ -112,6 +116,7 @@ class HomeViewModel @Inject constructor(
             )
 
             is HomeUiState.SentenceSuccess -> analyzeSentence(current.card.sentence)
+            is HomeUiState.ExpressionSuccess -> rescueExpression(current.card.intent)
             HomeUiState.Idle, HomeUiState.Loading, is HomeUiState.Error -> Unit
         }
     }
@@ -128,6 +133,24 @@ class HomeViewModel @Inject constructor(
             repo.analyzeSentence(trimmed).fold(
                 onSuccess = { card ->
                     _state.value = HomeUiState.SentenceSuccess(card)
+                },
+                onFailure = { _state.value = HomeUiState.Error(it.message ?: "未知错误") },
+            )
+        }
+    }
+
+    fun rescueExpression(intent: String) {
+        val trimmed = intent.trim()
+        if (trimmed.isEmpty()) return
+        _state.value = HomeUiState.Loading
+        favoriteJob?.cancel()
+        noteJob?.cancel()
+        exampleJob?.cancel()
+        sourceSentenceJob?.cancel()
+        viewModelScope.launch {
+            repo.rescueExpression(trimmed).fold(
+                onSuccess = { card ->
+                    _state.value = HomeUiState.ExpressionSuccess(card)
                 },
                 onFailure = { _state.value = HomeUiState.Error(it.message ?: "未知错误") },
             )

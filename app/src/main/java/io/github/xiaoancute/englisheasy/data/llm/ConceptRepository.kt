@@ -3,6 +3,7 @@ package io.github.xiaoancute.englisheasy.data.llm
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.model.ExpressionRescueCard
 import io.github.xiaoancute.englisheasy.data.model.SentenceCard
 import io.github.xiaoancute.englisheasy.data.prompt.CURRENT_PROMPT_VERSION
 import io.github.xiaoancute.englisheasy.data.prompt.SYSTEM_PROMPT_V3
@@ -175,6 +176,21 @@ class ConceptRepository @Inject constructor(
         throw it.toUserFacingException()
     }
 
+    suspend fun rescueExpression(intent: String): Result<ExpressionRescueCard> = runCatching {
+        val trimmed = intent.trim()
+        require(trimmed.isNotEmpty()) { "想表达的内容不能为空" }
+
+        val cfg = settings.load()
+        require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
+
+        rescueExpressionWithJsonRetry(
+            intent = trimmed,
+            cfg = cfg,
+        )
+    }.recoverCatching {
+        throw it.toUserFacingException()
+    }
+
     private suspend fun performLookup(
         word: String,
         contextSentence: String,
@@ -266,6 +282,53 @@ class ConceptRepository @Inject constructor(
             performSentenceAnalysis(sentence, cfg, retryHint = null)
         } catch (firstError: LlmResponseFormatException) {
             performSentenceAnalysis(sentence, cfg, retryHint = firstError.message)
+        } catch (error: Throwable) {
+            throw error
+        }
+    }
+
+    private suspend fun performExpressionRescue(
+        intent: String,
+        cfg: ProviderConfig,
+        retryHint: String?,
+    ): ExpressionRescueCard {
+        val response = api.chat(
+            fullUrl = "${cfg.baseUrl.trimEnd('/')}/chat/completions",
+            authorization = "Bearer ${cfg.apiKey}",
+            request = ChatRequest(
+                model = cfg.model,
+                messages = listOf(
+                    ChatMessage(role = "system", content = EXPRESSION_RESCUE_SYSTEM_PROMPT),
+                    ChatMessage(
+                        role = "user",
+                        content = buildExpressionRescueUserMessage(
+                            intent = intent,
+                            retryHint = retryHint,
+                        ),
+                    ),
+                ),
+                temperature = 0.35,
+            ),
+        )
+
+        val raw = response.choices.firstOrNull()?.message?.content
+            ?: throw LlmResponseFormatException("LLM 响应里没有 choices/message")
+        val cleanJson = extractJson(raw) ?: throw LlmResponseFormatException("响应里找不到 JSON 主体")
+        return try {
+            json.decodeFromString<ExpressionRescueCard>(cleanJson)
+        } catch (error: SerializationException) {
+            throw LlmResponseFormatException("JSON 解析失败：${error.message}", error)
+        }
+    }
+
+    private suspend fun rescueExpressionWithJsonRetry(
+        intent: String,
+        cfg: ProviderConfig,
+    ): ExpressionRescueCard {
+        return try {
+            performExpressionRescue(intent, cfg, retryHint = null)
+        } catch (firstError: LlmResponseFormatException) {
+            performExpressionRescue(intent, cfg, retryHint = firstError.message)
         } catch (error: Throwable) {
             throw error
         }

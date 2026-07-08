@@ -57,10 +57,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.model.ExpressionRescueCard
 import io.github.xiaoancute.englisheasy.data.model.SentenceCard
 import io.github.xiaoancute.englisheasy.data.model.toShareText
 import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
+import io.github.xiaoancute.englisheasy.ui.components.ExpressionRescueCardView
 import io.github.xiaoancute.englisheasy.ui.components.SectionHeader
 import io.github.xiaoancute.englisheasy.ui.components.SentenceCardView
 import io.github.xiaoancute.englisheasy.ui.components.StatePanel
@@ -90,13 +92,14 @@ fun HomeScreen(
         val normalized = query.trim()
         if (normalized.isBlank()) return
         input = normalized
-        if (lookupMode == LookupMode.Sentence) {
-            viewModel.analyzeSentence(normalized)
-        } else {
-            viewModel.lookup(
+        when (lookupMode) {
+            LookupMode.Word -> viewModel.lookup(
                 word = normalized,
                 contextSentence = contextSentence,
             )
+
+            LookupMode.Sentence -> viewModel.analyzeSentence(normalized)
+            LookupMode.Expression -> viewModel.rescueExpression(normalized)
         }
         keyboard?.hide()
     }
@@ -124,6 +127,7 @@ fun HomeScreen(
                 pendingStudyLookupWord = null
             }
             is HomeUiState.SentenceSuccess -> Unit
+            is HomeUiState.ExpressionSuccess -> Unit
             is HomeUiState.Error -> {
                 snackbarHostState.showSnackbar("查询失败，未加入学习进度：$word")
                 pendingStudyLookupWord = null
@@ -186,6 +190,8 @@ fun HomeScreen(
                 },
                 onSentenceShare = { card -> shareSentenceCard(context, card) },
                 onSentenceCopy = { card -> copySentenceCard(context, card) },
+                onExpressionShare = { card -> shareExpressionCard(context, card) },
+                onExpressionCopy = { card -> copyExpressionCard(context, card) },
                 onLookupExpression = { expression, sourceSentence ->
                     lookupMode = LookupMode.Word
                     input = expression
@@ -212,14 +218,21 @@ private fun LookupPanel(
     onContextSentenceChange: (String) -> Unit,
     onLookup: () -> Unit,
 ) {
+    val title = when (lookupMode) {
+        LookupMode.Word -> "概念还原"
+        LookupMode.Sentence -> "原文拆解"
+        LookupMode.Expression -> "表达救援"
+    }
+    val subtitle = when (lookupMode) {
+        LookupMode.Word -> "先看核心画面，再写自己的例句"
+        LookupMode.Sentence -> "把一句看不懂的英文拆成意思、语气和可复用表达"
+        LookupMode.Expression -> "把脑子里的中文意思变成能说出口的英文"
+    }
+
     SurfaceCard(tone = SurfaceTone.Tonal) {
         SectionHeader(
-            title = if (lookupMode == LookupMode.Word) "概念还原" else "原文拆解",
-            subtitle = if (lookupMode == LookupMode.Word) {
-                "先看核心画面，再写自己的例句"
-            } else {
-                "把一句看不懂的英文拆成意思、语气和可复用表达"
-            },
+            title = title,
+            subtitle = subtitle,
         )
 
         ModeSelector(
@@ -232,10 +245,10 @@ private fun LookupPanel(
             onValueChange = onInputChange,
             placeholder = {
                 Text(
-                    if (lookupMode == LookupMode.Word) {
-                        "spring / break the ice"
-                    } else {
-                        "I'm not really in a position to make that call."
+                    when (lookupMode) {
+                        LookupMode.Word -> "spring / break the ice"
+                        LookupMode.Sentence -> "I'm not really in a position to make that call."
+                        LookupMode.Expression -> "这事我现在没法决定，不是我不愿意，是我没权限。"
                     },
                 )
             },
@@ -286,7 +299,13 @@ private fun LookupPanel(
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
         ) {
-            Text(if (lookupMode == LookupMode.Word) "还原概念" else "拆开这句")
+            Text(
+                when (lookupMode) {
+                    LookupMode.Word -> "还原概念"
+                    LookupMode.Sentence -> "拆开这句"
+                    LookupMode.Expression -> "帮我说出来"
+                }
+            )
         }
     }
 }
@@ -297,7 +316,10 @@ private fun ModeSelector(
     selected: LookupMode,
     onSelected: (LookupMode) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         FilterChip(
             selected = selected == LookupMode.Word,
             onClick = { onSelected(LookupMode.Word) },
@@ -307,6 +329,11 @@ private fun ModeSelector(
             selected = selected == LookupMode.Sentence,
             onClick = { onSelected(LookupMode.Sentence) },
             label = { Text("拆句") },
+        )
+        FilterChip(
+            selected = selected == LookupMode.Expression,
+            onClick = { onSelected(LookupMode.Expression) },
+            label = { Text("想说") },
         )
     }
 }
@@ -326,6 +353,8 @@ private fun ResultArea(
     onCopy: (ConceptCard, String, String, String) -> Unit,
     onSentenceShare: (SentenceCard) -> Unit,
     onSentenceCopy: (SentenceCard) -> Unit,
+    onExpressionShare: (ExpressionRescueCard) -> Unit,
+    onExpressionCopy: (ExpressionRescueCard) -> Unit,
     onLookupExpression: (String, String) -> Unit,
     onRetry: () -> Unit,
 ) {
@@ -377,6 +406,15 @@ private fun ResultArea(
             onRefreshClick = onRefresh,
             onLookupExpression = { expression ->
                 onLookupExpression(expression, state.card.sentence)
+            },
+        )
+        is HomeUiState.ExpressionSuccess -> ExpressionRescueCardView(
+            card = state.card,
+            onShareClick = { onExpressionShare(state.card) },
+            onCopyClick = { onExpressionCopy(state.card) },
+            onRefreshClick = onRefresh,
+            onLookupExpression = { expression ->
+                onLookupExpression(expression, state.card.contextForExpression(expression))
             },
         )
         is HomeUiState.Error -> ErrorView(message = state.message, onRetry = onRetry)
@@ -453,9 +491,41 @@ private fun copySentenceCard(
     Toast.makeText(context, "已复制原文拆解", Toast.LENGTH_SHORT).show()
 }
 
+private fun shareExpressionCard(
+    context: android.content.Context,
+    card: ExpressionRescueCard,
+) {
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "英易表达救援")
+        putExtra(Intent.EXTRA_TEXT, card.toShareText())
+    }
+    context.startActivity(
+        Intent.createChooser(sendIntent, "分享表达救援")
+    )
+}
+
+private fun copyExpressionCard(
+    context: android.content.Context,
+    card: ExpressionRescueCard,
+) {
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    clipboard.setPrimaryClip(
+        ClipData.newPlainText("英易表达救援", card.toShareText())
+    )
+    Toast.makeText(context, "已复制表达救援", Toast.LENGTH_SHORT).show()
+}
+
+private fun ExpressionRescueCard.contextForExpression(expression: String): String {
+    return options.firstOrNull { option ->
+        option.english.contains(expression, ignoreCase = true)
+    }?.english ?: options.firstOrNull()?.english.orEmpty()
+}
+
 private enum class LookupMode {
     Word,
     Sentence,
+    Expression,
 }
 
 @Composable
@@ -465,15 +535,15 @@ private fun IdleHint(
 ) {
     SurfaceCard(tone = SurfaceTone.Tonal) {
         SectionHeader(
-            title = if (lookupMode == LookupMode.Word) {
-                "从容易误解的词开始"
-            } else {
-                "从看不懂的整句开始"
+            title = when (lookupMode) {
+                LookupMode.Word -> "从容易误解的词开始"
+                LookupMode.Sentence -> "从看不懂的整句开始"
+                LookupMode.Expression -> "从说不出口的意思开始"
             },
-            subtitle = if (lookupMode == LookupMode.Word) {
-                "查完重点看核心概念和典型场景，最后写一句自己的英文。"
-            } else {
-                "先拆整句，再把关键表达单独还原成概念卡。"
+            subtitle = when (lookupMode) {
+                LookupMode.Word -> "查完重点看核心概念和典型场景，最后写一句自己的英文。"
+                LookupMode.Sentence -> "先拆整句，再把关键表达单独还原成概念卡。"
+                LookupMode.Expression -> "输入中文意图，先拿到能开口的英文，再学可复用表达。"
             },
         )
         Row(
@@ -482,16 +552,28 @@ private fun IdleHint(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (lookupMode == LookupMode.Word) {
-                ExampleChip(text = "spring", onClick = onExampleLookup)
-                ExampleChip(text = "break the ice", onClick = onExampleLookup)
-                ExampleChip(text = "worth", onClick = onExampleLookup)
-            } else {
-                ExampleChip(
-                    text = "I'm not really in a position to make that call.",
-                    onClick = onExampleLookup,
-                )
-                ExampleChip(text = "This is out of my hands.", onClick = onExampleLookup)
+            when (lookupMode) {
+                LookupMode.Word -> {
+                    ExampleChip(text = "spring", onClick = onExampleLookup)
+                    ExampleChip(text = "break the ice", onClick = onExampleLookup)
+                    ExampleChip(text = "worth", onClick = onExampleLookup)
+                }
+
+                LookupMode.Sentence -> {
+                    ExampleChip(
+                        text = "I'm not really in a position to make that call.",
+                        onClick = onExampleLookup,
+                    )
+                    ExampleChip(text = "This is out of my hands.", onClick = onExampleLookup)
+                }
+
+                LookupMode.Expression -> {
+                    ExampleChip(
+                        text = "这事我现在没法决定，不是我不愿意，是我没权限。",
+                        onClick = onExampleLookup,
+                    )
+                    ExampleChip(text = "我想礼貌地说我今天不太方便。", onClick = onExampleLookup)
+                }
             }
         }
     }

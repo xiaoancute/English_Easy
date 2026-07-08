@@ -82,4 +82,26 @@ class ExampleFeedbackTest {
         assertTrue(message.contains("请只输出合法 JSON"))
         assertTrue(message.contains("原文句子：This is out of my hands."))
     }
+
+    @Test
+    fun expressionRescueMessageIncludesChineseIntent() {
+        val message = buildExpressionRescueUserMessage(
+            intent = "这事我现在没法决定，不是我不愿意，是我没权限。",
+            retryHint = null,
+        )
+
+        assertTrue(message.contains("中文意图：这事我现在没法决定"))
+    }
+
+    @Test
+    fun expressionRescueRetryMessageAsksForCleanJson() {
+        val message = buildExpressionRescueUserMessage(
+            intent = "我想礼貌地说我今天不太方便。",
+            retryHint = "JSON 解析失败",
+        )
+
+        assertTrue(message.contains("上次响应解析失败：JSON 解析失败"))
+        assertTrue(message.contains("请只输出合法 JSON"))
+        assertTrue(message.contains("中文意图：我想礼貌地说我今天不太方便。"))
+    }
 }
