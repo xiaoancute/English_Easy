@@ -3,6 +3,7 @@ package io.github.xiaoancute.englisheasy.data.llm
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardDao
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.model.SentenceCard
 import io.github.xiaoancute.englisheasy.data.prompt.CURRENT_PROMPT_VERSION
 import io.github.xiaoancute.englisheasy.data.prompt.SYSTEM_PROMPT_V3
 import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
@@ -159,6 +160,21 @@ class ConceptRepository @Inject constructor(
         throw it.toUserFacingException()
     }
 
+    suspend fun analyzeSentence(sentence: String): Result<SentenceCard> = runCatching {
+        val trimmed = sentence.trim()
+        require(trimmed.isNotEmpty()) { "句子不能为空" }
+
+        val cfg = settings.load()
+        require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
+
+        analyzeSentenceWithJsonRetry(
+            sentence = trimmed,
+            cfg = cfg,
+        )
+    }.recoverCatching {
+        throw it.toUserFacingException()
+    }
+
     private suspend fun performLookup(
         word: String,
         contextSentence: String,
@@ -203,6 +219,53 @@ class ConceptRepository @Inject constructor(
             performLookup(word, contextSentence, cfg, retryHint = null)
         } catch (firstError: LlmResponseFormatException) {
             performLookup(word, contextSentence, cfg, retryHint = firstError.message)
+        } catch (error: Throwable) {
+            throw error
+        }
+    }
+
+    private suspend fun performSentenceAnalysis(
+        sentence: String,
+        cfg: ProviderConfig,
+        retryHint: String?,
+    ): SentenceCard {
+        val response = api.chat(
+            fullUrl = "${cfg.baseUrl.trimEnd('/')}/chat/completions",
+            authorization = "Bearer ${cfg.apiKey}",
+            request = ChatRequest(
+                model = cfg.model,
+                messages = listOf(
+                    ChatMessage(role = "system", content = SENTENCE_BREAKDOWN_SYSTEM_PROMPT),
+                    ChatMessage(
+                        role = "user",
+                        content = buildSentenceBreakdownUserMessage(
+                            sentence = sentence,
+                            retryHint = retryHint,
+                        ),
+                    ),
+                ),
+                temperature = 0.3,
+            ),
+        )
+
+        val raw = response.choices.firstOrNull()?.message?.content
+            ?: throw LlmResponseFormatException("LLM 响应里没有 choices/message")
+        val cleanJson = extractJson(raw) ?: throw LlmResponseFormatException("响应里找不到 JSON 主体")
+        return try {
+            json.decodeFromString<SentenceCard>(cleanJson)
+        } catch (error: SerializationException) {
+            throw LlmResponseFormatException("JSON 解析失败：${error.message}", error)
+        }
+    }
+
+    private suspend fun analyzeSentenceWithJsonRetry(
+        sentence: String,
+        cfg: ProviderConfig,
+    ): SentenceCard {
+        return try {
+            performSentenceAnalysis(sentence, cfg, retryHint = null)
+        } catch (firstError: LlmResponseFormatException) {
+            performSentenceAnalysis(sentence, cfg, retryHint = firstError.message)
         } catch (error: Throwable) {
             throw error
         }

@@ -7,6 +7,7 @@ import io.github.xiaoancute.englisheasy.data.llm.ExampleFeedback
 import io.github.xiaoancute.englisheasy.data.llm.ConceptRepository
 import io.github.xiaoancute.englisheasy.data.learning.WordLearningStateRepository
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.model.SentenceCard
 import io.github.xiaoancute.englisheasy.data.settings.SettingsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,9 @@ sealed interface HomeUiState {
         val userExample: String,
         val contextSentence: String = "",
         val exampleFeedbackState: ExampleFeedbackUiState = ExampleFeedbackUiState.Idle,
+    ) : HomeUiState
+    data class SentenceSuccess(
+        val card: SentenceCard,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
@@ -100,12 +104,34 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshCurrent() {
-        val current = _state.value as? HomeUiState.Success ?: return
-        lookup(
-            word = current.card.word,
-            contextSentence = current.contextSentence,
-            forceRefresh = true,
-        )
+        when (val current = _state.value) {
+            is HomeUiState.Success -> lookup(
+                word = current.card.word,
+                contextSentence = current.contextSentence,
+                forceRefresh = true,
+            )
+
+            is HomeUiState.SentenceSuccess -> analyzeSentence(current.card.sentence)
+            HomeUiState.Idle, HomeUiState.Loading, is HomeUiState.Error -> Unit
+        }
+    }
+
+    fun analyzeSentence(sentence: String) {
+        val trimmed = sentence.trim()
+        if (trimmed.isEmpty()) return
+        _state.value = HomeUiState.Loading
+        favoriteJob?.cancel()
+        noteJob?.cancel()
+        exampleJob?.cancel()
+        sourceSentenceJob?.cancel()
+        viewModelScope.launch {
+            repo.analyzeSentence(trimmed).fold(
+                onSuccess = { card ->
+                    _state.value = HomeUiState.SentenceSuccess(card)
+                },
+                onFailure = { _state.value = HomeUiState.Error(it.message ?: "未知错误") },
+            )
+        }
     }
 
     fun setFavorite(isFavorite: Boolean) {

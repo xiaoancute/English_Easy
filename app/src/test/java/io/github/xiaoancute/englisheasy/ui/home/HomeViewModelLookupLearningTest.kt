@@ -155,9 +155,13 @@ class HomeViewModelLookupLearningTest {
             every { repo.observeFavorite("spring") } returns flowOf(false)
             every { repo.observeNote("spring") } returns flowOf("")
             every { repo.observeExample("spring") } returns flowOf("")
+            every { repo.observeSourceSentence("spring") } returns flowOf("")
             every { repo.observeFavorite("run out of") } returns flowOf(false)
             every { repo.observeNote("run out of") } returns flowOf("")
             every { repo.observeExample("run out of") } returns flowOf("")
+            every {
+                repo.observeSourceSentence("run out of")
+            } returns flowOf("I ran out of time before the exam.")
         }
 
         fun viewModel(): HomeViewModel {

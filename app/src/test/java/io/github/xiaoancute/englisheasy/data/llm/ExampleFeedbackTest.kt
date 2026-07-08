@@ -60,4 +60,26 @@ class ExampleFeedbackTest {
         assertEquals("I am available after class.", feedback.improvedExample)
         assertTrue(feedback.reason.contains("某个时间"))
     }
+
+    @Test
+    fun sentenceBreakdownMessageIncludesOriginalSentence() {
+        val message = buildSentenceBreakdownUserMessage(
+            sentence = "I'm not really in a position to make that call.",
+            retryHint = null,
+        )
+
+        assertTrue(message.contains("原文句子：I'm not really in a position to make that call."))
+    }
+
+    @Test
+    fun sentenceBreakdownRetryMessageAsksForCleanJson() {
+        val message = buildSentenceBreakdownUserMessage(
+            sentence = "This is out of my hands.",
+            retryHint = "JSON 解析失败",
+        )
+
+        assertTrue(message.contains("上次响应解析失败：JSON 解析失败"))
+        assertTrue(message.contains("请只输出合法 JSON"))
+        assertTrue(message.contains("原文句子：This is out of my hands."))
+    }
 }

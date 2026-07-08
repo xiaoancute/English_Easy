@@ -1,0 +1,38 @@
+package io.github.xiaoancute.englisheasy.data.model
+
+fun SentenceCard.toShareText(): String = buildString {
+    appendLine("# 原文拆解")
+    appendLine()
+    appendLine(sentence)
+    appendLine()
+    appendLine("## 整句意思")
+    appendLine()
+    appendLine(overallMeaning)
+    appendLine()
+    appendLine("## 为什么卡住")
+    appendLine()
+    appendLine(whyItFeelsHard)
+    appendLine()
+    appendLine("## 关键表达")
+    appendLine()
+    keyChunks.forEach { chunk ->
+        appendLine("- ${chunk.expression}：${chunk.naturalMeaning}")
+        appendLine("  ${chunk.conceptHint}")
+    }
+    appendLine()
+    appendLine("## 语气")
+    appendLine()
+    appendLine(hiddenTone)
+    appendLine()
+    appendLine("## 可复用句型")
+    appendLine()
+    appendLine(reusablePattern)
+    appendLine()
+    appendLine("## 中文误区")
+    appendLine()
+    appendLine(chineseTrap)
+    appendLine()
+    appendLine("## 简化改写")
+    appendLine()
+    appendLine(simpleParaphrase)
+}

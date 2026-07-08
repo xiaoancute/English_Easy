@@ -78,3 +78,58 @@ internal fun buildExampleFeedbackUserMessage(
         appendLine("用户例句：${userExample.trim()}")
     }.trim()
 }
+
+internal val SENTENCE_BREAKDOWN_SYSTEM_PROMPT = """
+# 英易原文拆解器
+
+你是「英易」的原文拆解器。用户会给你一句英文。你的任务不是翻译，而是帮中文学习者看懂这句话为什么这样表达。
+
+## 输出格式（严格 JSON，禁止 Markdown）
+
+```json
+{
+  "sentence": "用户输入的英文句子",
+  "overallMeaning": "一句中文说明整句话大意，不要逐词翻译",
+  "whyItFeelsHard": "一句话说明这句话为什么会让中文学习者卡住",
+  "keyChunks": [
+    {
+      "expression": "句子里值得拆的词/短语/结构",
+      "roleInSentence": "它在句子里承担的功能",
+      "naturalMeaning": "它在当前句子里的自然意思",
+      "conceptHint": "一句核心画面提示，方便之后单独查词"
+    }
+  ],
+  "hiddenTone": "这句话带出的语气/立场/关系",
+  "reusablePattern": "可以迁移复用的英文句型",
+  "chineseTrap": "中国学习者容易怎么误解",
+  "simpleParaphrase": "一句更简单自然的英文改写",
+  "suggestedLookups": ["值得单独做概念卡的 1~3 个表达"],
+  "promptVersion": 3
+}
+```
+
+## 规则
+
+- `keyChunks` 控制在 2~4 个，优先拆“词都认识但整句不懂”的部分。
+- 不要做语法术语讲解，除非不用术语会说不清。
+- 不要输出长篇翻译；每个字段短到手机上一眼能扫完。
+- `suggestedLookups` 只放原句里真实出现、值得单独理解的英文表达。
+- `promptVersion` 必须是 3。
+""".trimIndent()
+
+internal fun buildSentenceBreakdownUserMessage(
+    sentence: String,
+    retryHint: String?,
+): String {
+    val baseMessage = "原文句子：${sentence.trim()}"
+    return if (retryHint == null) {
+        baseMessage
+    } else {
+        """
+        上次响应解析失败：$retryHint
+        请只输出合法 JSON，不要任何 Markdown 包裹或前后说明。
+
+        $baseMessage
+        """.trimIndent()
+    }
+}

@@ -29,6 +29,7 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -56,10 +57,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.model.SentenceCard
 import io.github.xiaoancute.englisheasy.data.model.toShareText
 import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
 import io.github.xiaoancute.englisheasy.ui.components.SectionHeader
+import io.github.xiaoancute.englisheasy.ui.components.SentenceCardView
 import io.github.xiaoancute.englisheasy.ui.components.StatePanel
 import io.github.xiaoancute.englisheasy.ui.components.SurfaceCard
 import io.github.xiaoancute.englisheasy.ui.components.SurfaceTone
@@ -75,6 +78,7 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val isConfigured by viewModel.isConfigured.collectAsState()
+    var lookupMode by remember { mutableStateOf(LookupMode.Word) }
     var input by remember { mutableStateOf("") }
     var contextSentence by remember { mutableStateOf("") }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -86,16 +90,21 @@ fun HomeScreen(
         val normalized = query.trim()
         if (normalized.isBlank()) return
         input = normalized
-        viewModel.lookup(
-            word = normalized,
-            contextSentence = contextSentence,
-        )
+        if (lookupMode == LookupMode.Sentence) {
+            viewModel.analyzeSentence(normalized)
+        } else {
+            viewModel.lookup(
+                word = normalized,
+                contextSentence = contextSentence,
+            )
+        }
         keyboard?.hide()
     }
 
     // 从其他页跳转过来时自动查询
     LaunchedEffect(initialWord, markLearningOnSuccess) {
         if (initialWord != null) {
+            lookupMode = LookupMode.Word
             input = initialWord
             contextSentence = ""
             pendingStudyLookupWord = if (markLearningOnSuccess) initialWord else null
@@ -114,6 +123,7 @@ fun HomeScreen(
                 snackbarHostState.showSnackbar("已加入学习中：${currentState.card.word}")
                 pendingStudyLookupWord = null
             }
+            is HomeUiState.SentenceSuccess -> Unit
             is HomeUiState.Error -> {
                 snackbarHostState.showSnackbar("查询失败，未加入学习进度：$word")
                 pendingStudyLookupWord = null
@@ -142,8 +152,14 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
         ) {
             LookupPanel(
+                lookupMode = lookupMode,
                 input = input,
                 contextSentence = contextSentence,
+                onModeChange = {
+                    lookupMode = it
+                    contextSentence = ""
+                    viewModel.reset()
+                },
                 onInputChange = { input = it },
                 onContextSentenceChange = { contextSentence = it },
                 onLookup = { performLookup() },
@@ -152,6 +168,7 @@ fun HomeScreen(
             ResultArea(
                 state = state,
                 isConfigured = isConfigured,
+                lookupMode = lookupMode,
                 onExampleLookup = {
                     contextSentence = ""
                     performLookup(it)
@@ -167,6 +184,18 @@ fun HomeScreen(
                 onCopy = { card, note, sourceSentence, example ->
                     copyCard(context, card, note, sourceSentence, example)
                 },
+                onSentenceShare = { card -> shareSentenceCard(context, card) },
+                onSentenceCopy = { card -> copySentenceCard(context, card) },
+                onLookupExpression = { expression, sourceSentence ->
+                    lookupMode = LookupMode.Word
+                    input = expression
+                    contextSentence = sourceSentence
+                    viewModel.lookup(
+                        word = expression,
+                        contextSentence = sourceSentence,
+                    )
+                    keyboard?.hide()
+                },
                 onRetry = { performLookup() },
             )
         }
@@ -175,23 +204,44 @@ fun HomeScreen(
 
 @Composable
 private fun LookupPanel(
+    lookupMode: LookupMode,
     input: String,
     contextSentence: String,
+    onModeChange: (LookupMode) -> Unit,
     onInputChange: (String) -> Unit,
     onContextSentenceChange: (String) -> Unit,
     onLookup: () -> Unit,
 ) {
     SurfaceCard(tone = SurfaceTone.Tonal) {
         SectionHeader(
-            title = "概念还原",
-            subtitle = "先看核心画面，再写自己的例句",
+            title = if (lookupMode == LookupMode.Word) "概念还原" else "原文拆解",
+            subtitle = if (lookupMode == LookupMode.Word) {
+                "先看核心画面，再写自己的例句"
+            } else {
+                "把一句看不懂的英文拆成意思、语气和可复用表达"
+            },
+        )
+
+        ModeSelector(
+            selected = lookupMode,
+            onSelected = onModeChange,
         )
 
         OutlinedTextField(
             value = input,
             onValueChange = onInputChange,
-            placeholder = { Text("spring / break the ice") },
-            singleLine = true,
+            placeholder = {
+                Text(
+                    if (lookupMode == LookupMode.Word) {
+                        "spring / break the ice"
+                    } else {
+                        "I'm not really in a position to make that call."
+                    },
+                )
+            },
+            singleLine = lookupMode == LookupMode.Word,
+            minLines = if (lookupMode == LookupMode.Word) 1 else 3,
+            maxLines = if (lookupMode == LookupMode.Word) 1 else 6,
             shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -208,34 +258,56 @@ private fun LookupPanel(
             keyboardActions = KeyboardActions(onSearch = { onLookup() }),
         )
 
-        OutlinedTextField(
-            value = contextSentence,
-            onValueChange = onContextSentenceChange,
-            placeholder = { Text("可选：I ran out of time before the exam.") },
-            minLines = 2,
-            maxLines = 4,
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                imeAction = ImeAction.Default,
-            ),
-            supportingText = { Text("粘贴整句时，英易会优先解释这个词在当前句子里的用法") },
-        )
+        if (lookupMode == LookupMode.Word) {
+            OutlinedTextField(
+                value = contextSentence,
+                onValueChange = onContextSentenceChange,
+                placeholder = { Text("可选：I ran out of time before the exam.") },
+                minLines = 2,
+                maxLines = 4,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    imeAction = ImeAction.Default,
+                ),
+                supportingText = { Text("粘贴整句时，英易会优先解释这个词在当前句子里的用法") },
+            )
+        }
 
         Button(
             onClick = onLookup,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
         ) {
-            Text("还原概念")
+            Text(if (lookupMode == LookupMode.Word) "还原概念" else "拆开这句")
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ModeSelector(
+    selected: LookupMode,
+    onSelected: (LookupMode) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(
+            selected = selected == LookupMode.Word,
+            onClick = { onSelected(LookupMode.Word) },
+            label = { Text("查词") },
+        )
+        FilterChip(
+            selected = selected == LookupMode.Sentence,
+            onClick = { onSelected(LookupMode.Sentence) },
+            label = { Text("拆句") },
+        )
     }
 }
 
@@ -243,6 +315,7 @@ private fun LookupPanel(
 private fun ResultArea(
     state: HomeUiState,
     isConfigured: Boolean,
+    lookupMode: LookupMode,
     onExampleLookup: (String) -> Unit,
     onFavoriteChange: (Boolean) -> Unit,
     onNoteChange: (String) -> Unit,
@@ -251,11 +324,17 @@ private fun ResultArea(
     onRefresh: () -> Unit,
     onShare: (ConceptCard, String, String, String) -> Unit,
     onCopy: (ConceptCard, String, String, String) -> Unit,
+    onSentenceShare: (SentenceCard) -> Unit,
+    onSentenceCopy: (SentenceCard) -> Unit,
+    onLookupExpression: (String, String) -> Unit,
     onRetry: () -> Unit,
 ) {
     when (state) {
         HomeUiState.Idle -> if (isConfigured) {
-            IdleHint(onExampleLookup = onExampleLookup)
+            IdleHint(
+                lookupMode = lookupMode,
+                onExampleLookup = onExampleLookup,
+            )
         } else {
             SetupGuide()
         }
@@ -290,6 +369,15 @@ private fun ResultArea(
             isReviewingExample = state.exampleFeedbackState is ExampleFeedbackUiState.Loading,
             exampleFeedback = (state.exampleFeedbackState as? ExampleFeedbackUiState.Success)?.feedback,
             exampleFeedbackError = (state.exampleFeedbackState as? ExampleFeedbackUiState.Error)?.message,
+        )
+        is HomeUiState.SentenceSuccess -> SentenceCardView(
+            card = state.card,
+            onShareClick = { onSentenceShare(state.card) },
+            onCopyClick = { onSentenceCopy(state.card) },
+            onRefreshClick = onRefresh,
+            onLookupExpression = { expression ->
+                onLookupExpression(expression, state.card.sentence)
+            },
         )
         is HomeUiState.Error -> ErrorView(message = state.message, onRetry = onRetry)
     }
@@ -340,14 +428,53 @@ private fun copyCard(
     Toast.makeText(context, "已复制概念卡", Toast.LENGTH_SHORT).show()
 }
 
+private fun shareSentenceCard(
+    context: android.content.Context,
+    card: SentenceCard,
+) {
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "英易原文拆解")
+        putExtra(Intent.EXTRA_TEXT, card.toShareText())
+    }
+    context.startActivity(
+        Intent.createChooser(sendIntent, "分享原文拆解")
+    )
+}
+
+private fun copySentenceCard(
+    context: android.content.Context,
+    card: SentenceCard,
+) {
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    clipboard.setPrimaryClip(
+        ClipData.newPlainText("英易原文拆解", card.toShareText())
+    )
+    Toast.makeText(context, "已复制原文拆解", Toast.LENGTH_SHORT).show()
+}
+
+private enum class LookupMode {
+    Word,
+    Sentence,
+}
+
 @Composable
 private fun IdleHint(
+    lookupMode: LookupMode,
     onExampleLookup: (String) -> Unit,
 ) {
     SurfaceCard(tone = SurfaceTone.Tonal) {
         SectionHeader(
-            title = "从容易误解的词开始",
-            subtitle = "查完重点看核心概念和典型场景，最后写一句自己的英文。",
+            title = if (lookupMode == LookupMode.Word) {
+                "从容易误解的词开始"
+            } else {
+                "从看不懂的整句开始"
+            },
+            subtitle = if (lookupMode == LookupMode.Word) {
+                "查完重点看核心概念和典型场景，最后写一句自己的英文。"
+            } else {
+                "先拆整句，再把关键表达单独还原成概念卡。"
+            },
         )
         Row(
             modifier = Modifier
@@ -355,9 +482,17 @@ private fun IdleHint(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ExampleChip(text = "spring", onClick = onExampleLookup)
-            ExampleChip(text = "break the ice", onClick = onExampleLookup)
-            ExampleChip(text = "worth", onClick = onExampleLookup)
+            if (lookupMode == LookupMode.Word) {
+                ExampleChip(text = "spring", onClick = onExampleLookup)
+                ExampleChip(text = "break the ice", onClick = onExampleLookup)
+                ExampleChip(text = "worth", onClick = onExampleLookup)
+            } else {
+                ExampleChip(
+                    text = "I'm not really in a position to make that call.",
+                    onClick = onExampleLookup,
+                )
+                ExampleChip(text = "This is out of my hands.", onClick = onExampleLookup)
+            }
         }
     }
 }
