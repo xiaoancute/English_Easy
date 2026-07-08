@@ -170,7 +170,7 @@ private fun TodaySection(
                     if (currentReview == null) {
                         PlainStateCard(
                             title = "暂无到期复习",
-                            body = "现在可以查一个新词并写例句，或者去词库切换范围。",
+                            body = "没有待处理项目。",
                             actionText = "去词库",
                             onAction = onOpenPacks,
                         )
@@ -193,15 +193,15 @@ private fun TodaySection(
                 )
 
                 TodayStudyTask.ChoosePack -> PlainStateCard(
-                    title = "选择学习范围",
-                    body = "先选一个词库。新词会进入概念还原，再用自己的例句确认会用。",
+                    title = "未选择词库",
+                    body = "选择一个词库开始。",
                     actionText = "去词库",
                     onAction = onOpenPacks,
                 )
 
                 TodayStudyTask.Done -> PlainStateCard(
                     title = "今日完成",
-                    body = "今天的复习和新词都处理完了。可以回看薄弱词，或者换一个范围。",
+                    body = "没有待处理项目。",
                     actionText = "查看词库",
                     onAction = onOpenPacks,
                 )
@@ -252,7 +252,7 @@ private fun LearningOverviewCard(
             QuietProgressBar(progress = dashboard.progressFraction)
         } else {
             Text(
-                text = "先选一个词库，系统会按这个范围安排新词和复习。",
+                text = "未选择词库。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -334,7 +334,7 @@ private fun NewWordTaskCard(
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = "先看概念卡，再写一句自己的英文。",
+            text = "新词",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -565,7 +565,7 @@ private fun taskLabel(task: TodayStudyTask): String {
     return when (task) {
         is TodayStudyTask.Review -> "复习 ${task.dueReviewCount} 个到期词"
         is TodayStudyTask.NewWord -> "查新词并造句 · 剩余 ${task.remainingCount} 个"
-        TodayStudyTask.ChoosePack -> "先选词库"
+        TodayStudyTask.ChoosePack -> "选词库"
         TodayStudyTask.Done -> "今日完成"
     }
 }

@@ -223,16 +223,9 @@ private fun LookupPanel(
         LookupMode.Sentence -> "原文拆解"
         LookupMode.Expression -> "表达救援"
     }
-    val subtitle = when (lookupMode) {
-        LookupMode.Word -> "先看核心画面，再写自己的例句"
-        LookupMode.Sentence -> "把一句看不懂的英文拆成意思、语气和可复用表达"
-        LookupMode.Expression -> "把脑子里的中文意思变成能说出口的英文"
-    }
-
     SurfaceCard(tone = SurfaceTone.Tonal) {
         SectionHeader(
             title = title,
-            subtitle = subtitle,
         )
 
         ModeSelector(
@@ -275,7 +268,7 @@ private fun LookupPanel(
             OutlinedTextField(
                 value = contextSentence,
                 onValueChange = onContextSentenceChange,
-                placeholder = { Text("可选：I ran out of time before the exam.") },
+                placeholder = { Text("上下文") },
                 minLines = 2,
                 maxLines = 4,
                 shape = RoundedCornerShape(16.dp),
@@ -290,7 +283,6 @@ private fun LookupPanel(
                     capitalization = KeyboardCapitalization.None,
                     imeAction = ImeAction.Default,
                 ),
-                supportingText = { Text("粘贴整句时，英易会优先解释这个词在当前句子里的用法") },
             )
         }
 
@@ -535,16 +527,7 @@ private fun IdleHint(
 ) {
     SurfaceCard(tone = SurfaceTone.Tonal) {
         SectionHeader(
-            title = when (lookupMode) {
-                LookupMode.Word -> "从容易误解的词开始"
-                LookupMode.Sentence -> "从看不懂的整句开始"
-                LookupMode.Expression -> "从说不出口的意思开始"
-            },
-            subtitle = when (lookupMode) {
-                LookupMode.Word -> "查完重点看核心概念和典型场景，最后写一句自己的英文。"
-                LookupMode.Sentence -> "先拆整句，再把关键表达单独还原成概念卡。"
-                LookupMode.Expression -> "输入中文意图，先拿到能开口的英文，再学可复用表达。"
-            },
+            title = "示例",
         )
         Row(
             modifier = Modifier
@@ -599,8 +582,8 @@ private fun ExampleChip(
 @Composable
 private fun SetupGuide() {
     StatePanel(
-        title = "需要先配置 AI 服务",
-        body = "在底部「设置」里填入 Base URL、模型和 API Key 后即可查词。查完可以保存理解和自己的例句。",
+        title = "未配置",
+        body = "在「设置」里填入 Base URL、模型和 API Key。",
     )
 }
 
@@ -627,7 +610,7 @@ private fun LoadingIndicator() {
         ) {
             CircularProgressIndicator()
             Text(
-                text = "正在还原核心画面……",
+                text = "处理中……",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha * 0.7f),
             )

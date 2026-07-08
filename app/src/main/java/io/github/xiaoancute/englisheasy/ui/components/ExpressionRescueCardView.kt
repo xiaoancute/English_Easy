@@ -69,11 +69,11 @@ fun ExpressionRescueCardView(
             }
         }
 
-        InfoSection(title = "换个场景练", body = card.practicePrompt)
-        InfoSection(title = "记忆提示", body = card.memoryCue)
+        InfoSection(title = "练习", body = card.practicePrompt)
+        InfoSection(title = "提示", body = card.memoryCue)
 
         if (card.reusableExpressions.isNotEmpty()) {
-            Section(title = "单独还原") {
+            Section(title = "查词") {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -167,7 +167,7 @@ private fun ExpressionOptionItem(option: ExpressionOption) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = "适合：${option.whenToUse}",
+            text = option.whenToUse,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

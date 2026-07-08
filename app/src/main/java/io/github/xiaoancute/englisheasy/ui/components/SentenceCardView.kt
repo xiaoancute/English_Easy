@@ -52,7 +52,7 @@ fun SentenceCardView(
         )
 
         InfoSection(title = "整句意思", body = card.overallMeaning)
-        InfoSection(title = "为什么卡住", body = card.whyItFeelsHard)
+        InfoSection(title = "卡点", body = card.whyItFeelsHard)
 
         if (card.keyChunks.isNotEmpty()) {
             Section(title = "关键表达") {
@@ -68,7 +68,7 @@ fun SentenceCardView(
         InfoSection(title = "简单改写", body = card.simpleParaphrase)
 
         if (card.suggestedLookups.isNotEmpty()) {
-            Section(title = "值得单独查") {
+            Section(title = "查词") {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
