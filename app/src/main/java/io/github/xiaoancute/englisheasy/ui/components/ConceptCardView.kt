@@ -111,6 +111,7 @@ fun ConceptCardView(
         WordHeader(
             word = card.word,
             entryType = card.entryType,
+            coreConcept = if (card.branches == null) card.coreConcept else null,
             isFavorite = isFavorite,
             onFavoriteChange = onFavoriteChange,
             onShareClick = onShareClick,
@@ -141,6 +142,7 @@ fun ConceptCardView(
         } else {
             SingleCardBody(
                 card = card,
+                showCoreConcept = false,
             )
         }
 
@@ -182,6 +184,7 @@ private fun SourceSentenceSection(sourceSentence: String) {
 private fun WordHeader(
     word: String,
     entryType: EntryType,
+    coreConcept: CoreConcept?,
     isFavorite: Boolean,
     onFavoriteChange: ((Boolean) -> Unit)?,
     onShareClick: (() -> Unit)?,
@@ -209,6 +212,23 @@ private fun WordHeader(
             EntryTypePill(entryType)
         }
 
+        coreConcept?.let { core ->
+            Text(
+                text = core.picture,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "锚词",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+                HeroAnchorChip(core.anchorWord)
+            }
+        }
+
         HeaderActions(
             isFavorite = isFavorite,
             onFavoriteChange = onFavoriteChange,
@@ -216,6 +236,22 @@ private fun WordHeader(
             onCopyClick = onCopyClick,
             onRefreshClick = onRefreshClick,
             onPronounceClick = onPronounceClick,
+        )
+    }
+}
+
+@Composable
+private fun HeroAnchorChip(word: String) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.52f),
+    ) {
+        Text(
+            text = word,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
         )
     }
 }
@@ -302,9 +338,12 @@ private fun HeaderActions(
 @Composable
 private fun SingleCardBody(
     card: ConceptCard,
+    showCoreConcept: Boolean = true,
 ) {
-    card.coreConcept?.let { core ->
-        CoreConceptBlock(core)
+    if (showCoreConcept) {
+        card.coreConcept?.let { core ->
+            CoreConceptBlock(core)
+        }
     }
 
     card.chineseApproximation?.let { approx ->

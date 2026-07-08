@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +38,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -160,26 +162,19 @@ fun HomeScreen(
                 LookupPanel(
                     lookupMode = lookupMode,
                     input = input,
-                    contextSentence = contextSentence,
                     onModeChange = {
                         lookupMode = it
+                        input = ""
                         contextSentence = ""
                         viewModel.reset()
                     },
                     onInputChange = { input = it },
-                    onContextSentenceChange = { contextSentence = it },
                     onLookup = { performLookup() },
                 )
             } else {
-                CompactLookupBar(
+                ResultSearchBar(
                     lookupMode = lookupMode,
                     input = input,
-                    onModeChange = {
-                        lookupMode = it
-                        contextSentence = ""
-                        input = ""
-                        viewModel.reset()
-                    },
                     onInputChange = {
                         input = it
                         contextSentence = ""
@@ -189,6 +184,7 @@ fun HomeScreen(
             }
 
             ResultArea(
+                modifier = Modifier.weight(1f),
                 state = state,
                 isConfigured = isConfigured,
                 lookupMode = lookupMode,
@@ -228,23 +224,34 @@ fun HomeScreen(
 }
 
 @Composable
-private fun CompactLookupBar(
+private fun ResultSearchBar(
     lookupMode: LookupMode,
     input: String,
-    onModeChange: (LookupMode) -> Unit,
     onInputChange: (String) -> Unit,
     onLookup: () -> Unit,
 ) {
-    SurfaceCard(tone = SurfaceTone.Tonal, contentPadding = 12.dp) {
-        ModeSelector(
-            selected = lookupMode,
-            onSelected = onModeChange,
-        )
+    SurfaceCard(tone = SurfaceTone.Plain, contentPadding = 8.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Surface(
+                modifier = Modifier.width(62.dp),
+                shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                Box(
+                    modifier = Modifier.height(52.dp).fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = lookupMode.shortLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
             OutlinedTextField(
                 value = input,
                 onValueChange = onInputChange,
@@ -282,88 +289,103 @@ private fun CompactLookupBar(
 private fun LookupPanel(
     lookupMode: LookupMode,
     input: String,
-    contextSentence: String,
     onModeChange: (LookupMode) -> Unit,
     onInputChange: (String) -> Unit,
-    onContextSentenceChange: (String) -> Unit,
     onLookup: () -> Unit,
 ) {
-    val title = when (lookupMode) {
-        LookupMode.Word -> "概念还原"
-        LookupMode.Sentence -> "原文拆解"
-        LookupMode.Expression -> "表达救援"
-    }
-    SurfaceCard(tone = SurfaceTone.Tonal) {
-        SectionHeader(
-            title = title,
-        )
-
-        ModeSelector(
-            selected = lookupMode,
-            onSelected = onModeChange,
-        )
-
-        OutlinedTextField(
-            value = input,
-            onValueChange = onInputChange,
-            placeholder = {
-                Text(lookupMode.placeholder)
-            },
-            singleLine = lookupMode == LookupMode.Word,
-            minLines = if (lookupMode == LookupMode.Word) 1 else 3,
-            maxLines = if (lookupMode == LookupMode.Word) 1 else 6,
-            shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                imeAction = ImeAction.Search,
-            ),
-            keyboardActions = KeyboardActions(onSearch = { onLookup() }),
-        )
-
-        if (lookupMode == LookupMode.Word) {
-            OutlinedTextField(
-                value = contextSentence,
-                onValueChange = onContextSentenceChange,
-                placeholder = { Text("上下文") },
-                minLines = 2,
-                maxLines = 4,
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.None,
-                    imeAction = ImeAction.Default,
-                ),
-            )
-        }
-
-        Button(
-            onClick = onLookup,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                when (lookupMode) {
-                    LookupMode.Word -> "还原概念"
-                    LookupMode.Sentence -> "拆开这句"
-                    LookupMode.Expression -> "帮我说出来"
-                }
+            ModeSelector(
+                selected = lookupMode,
+                onSelected = onModeChange,
             )
+
+            if (lookupMode == LookupMode.Word) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    LookupTextField(
+                        lookupMode = lookupMode,
+                        input = input,
+                        onInputChange = onInputChange,
+                        onLookup = onLookup,
+                        modifier = Modifier.weight(1f).height(52.dp),
+                    )
+                    Button(
+                        onClick = onLookup,
+                        modifier = Modifier.width(72.dp).height(52.dp),
+                        shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+                    ) {
+                        Text("查")
+                    }
+                }
+            } else {
+                LookupTextField(
+                    lookupMode = lookupMode,
+                    input = input,
+                    onInputChange = onInputChange,
+                    onLookup = onLookup,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(
+                    onClick = onLookup,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+                ) {
+                    Text(
+                        when (lookupMode) {
+                            LookupMode.Word -> "查"
+                            LookupMode.Sentence -> "拆句"
+                            LookupMode.Expression -> "生成表达"
+                        }
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun LookupTextField(
+    lookupMode: LookupMode,
+    input: String,
+    onInputChange: (String) -> Unit,
+    onLookup: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = input,
+        onValueChange = onInputChange,
+        placeholder = {
+            Text(lookupMode.placeholder)
+        },
+        singleLine = lookupMode == LookupMode.Word,
+        minLines = if (lookupMode == LookupMode.Word) 1 else 3,
+        maxLines = if (lookupMode == LookupMode.Word) 1 else 6,
+        shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedBorderColor = Color.Transparent,
+            unfocusedBorderColor = Color.Transparent,
+        ),
+        modifier = modifier,
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.None,
+            imeAction = ImeAction.Search,
+        ),
+        keyboardActions = KeyboardActions(onSearch = { onLookup() }),
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -396,6 +418,7 @@ private fun ModeSelector(
 
 @Composable
 private fun ResultArea(
+    modifier: Modifier = Modifier,
     state: HomeUiState,
     isConfigured: Boolean,
     lookupMode: LookupMode,
@@ -414,7 +437,8 @@ private fun ResultArea(
     onLookupExpression: (String, String) -> Unit,
     onRetry: () -> Unit,
 ) {
-    when (state) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        when (state) {
         HomeUiState.Idle -> if (isConfigured) {
             IdleHint(
                 lookupMode = lookupMode,
@@ -474,6 +498,7 @@ private fun ResultArea(
             },
         )
         is HomeUiState.Error -> ErrorView(message = state.message, onRetry = onRetry)
+        }
     }
 }
 
@@ -591,6 +616,13 @@ private val LookupMode.placeholder: String
         LookupMode.Expression -> "这事我现在没法决定，不是我不愿意，是我没权限。"
     }
 
+private val LookupMode.shortLabel: String
+    get() = when (this) {
+        LookupMode.Word -> "查词"
+        LookupMode.Sentence -> "拆句"
+        LookupMode.Expression -> "想说"
+    }
+
 @Composable
 private fun IdleHint(
     lookupMode: LookupMode,
@@ -652,10 +684,27 @@ private fun ExampleChip(
 
 @Composable
 private fun SetupGuide() {
-    StatePanel(
-        title = "未配置",
-        body = "在「设置」里填入 Base URL、模型和 API Key。",
-    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = "未配置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "在设置里填入 Base URL、模型和 API Key。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable
