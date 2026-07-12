@@ -11,9 +11,11 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -192,41 +194,9 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         val showFullLookup = state is HomeUiState.Idle || state is HomeUiState.Error
-        val pageModifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .padding(
-                    horizontal = EnglishEasySpacing.PageHorizontal,
-                    vertical = EnglishEasySpacing.PageVertical,
-                )
-                .then(
-                    if (showFullLookup) Modifier.verticalScroll(rememberScrollState()) else Modifier,
-                )
-        Column(
-            modifier = pageModifier,
-            verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
-        ) {
-            if (showFullLookup) {
-                LookupPanel(
-                    lookupMode = lookupMode,
-                    input = input,
-                    onModeChange = ::changeMode,
-                    onInputChange = { input = it },
-                    onLookup = { performLookup() },
-                )
-            } else {
-                ResultSearchBar(
-                    lookupMode = lookupMode,
-                    input = input,
-                    onInputChange = { input = it },
-                    onLookup = { performLookup() },
-                    onClear = ::clearToIdle,
-                    onModeChange = ::changeMode,
-                )
-            }
-
+        val resultContent: @Composable (Modifier) -> Unit = { resultModifier ->
             ResultArea(
-                modifier = if (showFullLookup) Modifier else Modifier.weight(1f),
+                modifier = resultModifier,
                 state = state,
                 isConfigured = isConfigured,
                 lookupMode = lookupMode,
@@ -262,6 +232,72 @@ fun HomeScreen(
                 onRetry = { performLookup() },
                 onOpenSettings = onOpenSettings,
             )
+        }
+        BoxWithConstraints(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+        ) {
+            val isLandscape = maxWidth > maxHeight
+            if (showFullLookup && isLandscape) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(
+                            horizontal = EnglishEasySpacing.PageHorizontal,
+                            vertical = EnglishEasySpacing.PageVertical,
+                        ),
+                    horizontalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        LookupPanel(
+                            lookupMode = lookupMode,
+                            input = input,
+                            onModeChange = ::changeMode,
+                            onInputChange = { input = it },
+                            onLookup = { performLookup() },
+                        )
+                    }
+                    resultContent(Modifier.weight(1f).fillMaxHeight())
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(
+                            horizontal = EnglishEasySpacing.PageHorizontal,
+                            vertical = EnglishEasySpacing.PageVertical,
+                        )
+                        .then(
+                            if (showFullLookup) {
+                                Modifier.verticalScroll(rememberScrollState())
+                            } else {
+                                Modifier
+                            },
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
+                ) {
+                    if (showFullLookup) {
+                        LookupPanel(
+                            lookupMode = lookupMode,
+                            input = input,
+                            onModeChange = ::changeMode,
+                            onInputChange = { input = it },
+                            onLookup = { performLookup() },
+                        )
+                    } else {
+                        ResultSearchBar(
+                            lookupMode = lookupMode,
+                            input = input,
+                            onInputChange = { input = it },
+                            onLookup = { performLookup() },
+                            onClear = ::clearToIdle,
+                            onModeChange = ::changeMode,
+                        )
+                    }
+                    resultContent(if (showFullLookup) Modifier else Modifier.weight(1f))
+                }
+            }
         }
     }
 }
