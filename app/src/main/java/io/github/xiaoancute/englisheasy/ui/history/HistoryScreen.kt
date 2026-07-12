@@ -86,6 +86,7 @@ fun FavoritesScreen(
     SavedCardsScreen(
         title = "收藏",
         emptyText = "暂无收藏",
+        emptyIcon = Icons.Outlined.StarBorder,
         cards = favorites,
         onWordClick = onWordClick,
         onDelete = viewModel::delete,
@@ -101,6 +102,7 @@ fun FavoritesScreen(
 private fun SavedCardsScreen(
     title: String,
     emptyText: String,
+    emptyIcon: androidx.compose.ui.graphics.vector.ImageVector,
     cards: List<ConceptCardEntity>,
     onWordClick: (String) -> Unit,
     onDelete: (String) -> Unit,
@@ -142,6 +144,7 @@ private fun SavedCardsScreen(
                 "收藏的概念卡会出现在这里，方便回看和复制。"
             }
             EmptyState(
+                icon = emptyIcon,
                 title = emptyText,
                 body = emptyBody,
                 modifier = Modifier.padding(innerPadding),
@@ -177,6 +180,7 @@ private fun SavedCardsScreen(
 
 @Composable
 private fun EmptyState(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     body: String,
     modifier: Modifier = Modifier,
@@ -188,7 +192,7 @@ private fun EmptyState(
         contentAlignment = Alignment.Center,
     ) {
         EmptyHero(
-            icon = Icons.Outlined.History,
+            icon = icon,
             title = title,
             body = body,
         )
