@@ -1,14 +1,20 @@
 package io.github.xiaoancute.englisheasy.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -16,19 +22,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+/**
+ * 间距与形状 token。
+ * 参考：Pixel / Material You 的 8dp 节奏 + 词典类 App 的宽松阅读留白。
+ */
 object EnglishEasySpacing {
-    val PageHorizontal = 16.dp
+    val PageHorizontal = 20.dp
     val PageVertical = 12.dp
-    val SectionGap = 18.dp
+    val SectionGap = 20.dp
     val ItemGap = 12.dp
     val SurfacePadding = 20.dp
-    val CardRadius = 24.dp
+    val CardRadius = 22.dp
     val HeroRadius = 28.dp
     val PillRadius = 28.dp
+    val SearchHeight = 56.dp
 }
 
 enum class SurfaceTone { Plain, Tonal, Hero }
@@ -45,17 +58,79 @@ fun SurfaceCard(
         SurfaceTone.Tonal -> MaterialTheme.colorScheme.surfaceContainerHigh
         SurfaceTone.Hero -> MaterialTheme.colorScheme.primaryContainer
     }
-    val radius = if (tone == SurfaceTone.Hero) EnglishEasySpacing.HeroRadius else EnglishEasySpacing.CardRadius
+    val radius = if (tone == SurfaceTone.Hero) {
+        EnglishEasySpacing.HeroRadius
+    } else {
+        EnglishEasySpacing.CardRadius
+    }
+    val shadow = if (tone == SurfaceTone.Hero) 3.dp else 0.dp
+    val tonal = when (tone) {
+        SurfaceTone.Hero -> 0.dp
+        SurfaceTone.Tonal -> 1.dp
+        SurfaceTone.Plain -> 0.dp
+    }
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(radius),
         color = container,
+        tonalElevation = tonal,
+        shadowElevation = shadow,
     ) {
         Column(
             modifier = Modifier.padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.ItemGap),
             content = content,
         )
+    }
+}
+
+/** 圆形 tonal 操作按钮 —— 参考 Pixel 词典/翻译的圆形控件。 */
+@Composable
+fun TonalIconButton(
+    onClick: () -> Unit,
+    imageVector: ImageVector,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+) {
+    FilledTonalIconButton(
+        onClick = onClick,
+        modifier = modifier.size(44.dp),
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+        ),
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+/** 列表左侧 monogram（Apple 联系人 / 词典列表常见手法）。 */
+@Composable
+fun LetterAvatar(
+    letter: String,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+) {
+    Surface(
+        modifier = modifier.size(44.dp),
+        shape = CircleShape,
+        color = containerColor,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = letter.take(1).uppercase(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = contentColor,
+            )
+        }
     }
 }
 
@@ -103,7 +178,60 @@ fun SectionHeader(
                 )
             }
         }
-        if (trailing != null) Row(verticalAlignment = Alignment.CenterVertically, content = trailing)
+        if (trailing != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, content = trailing)
+        }
+    }
+}
+
+/** 居中空状态 —— 参考 Google 翻译首页的「大图标 + 短说明」。 */
+@Composable
+fun EmptyHero(
+    icon: ImageVector,
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.size(72.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        if (action != null) {
+            Box(modifier = Modifier.padding(top = 4.dp)) {
+                action()
+            }
+        }
     }
 }
 

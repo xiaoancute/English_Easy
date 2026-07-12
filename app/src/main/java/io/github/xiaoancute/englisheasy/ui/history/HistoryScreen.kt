@@ -20,8 +20,9 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Update
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -31,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,8 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.prompt.CURRENT_PROMPT_VERSION
+import io.github.xiaoancute.englisheasy.ui.components.EmptyHero
 import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
-import io.github.xiaoancute.englisheasy.ui.components.StatePanel
+import io.github.xiaoancute.englisheasy.ui.components.LetterAvatar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -60,6 +63,7 @@ fun HistoryScreen(
     SavedCardsScreen(
         title = "查询历史",
         emptyText = "暂无历史记录",
+        emptyIcon = Icons.Outlined.History,
         cards = history,
         onWordClick = onWordClick,
         onDelete = viewModel::delete,
@@ -109,9 +113,15 @@ private fun SavedCardsScreen(
 
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text(title) },
+                title = {
+                    Text(
+                        text = title,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
                 actions = {
                     if (cards.isNotEmpty() && onClearAll != null) {
                         IconButton(onClick = onClearAll) {
@@ -119,6 +129,9 @@ private fun SavedCardsScreen(
                         }
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
             )
         },
     ) { innerPadding ->
@@ -174,7 +187,11 @@ private fun EmptyState(
             .padding(horizontal = EnglishEasySpacing.PageHorizontal),
         contentAlignment = Alignment.Center,
     ) {
-        StatePanel(title = title, body = body)
+        EmptyHero(
+            icon = Icons.Outlined.History,
+            title = title,
+            body = body,
+        )
     }
 }
 
@@ -197,100 +214,97 @@ private fun HistoryItem(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(EnglishEasySpacing.CardRadius),
         color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 1.dp,
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.ItemGap),
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
+            LetterAvatar(letter = entity.word)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
+                Text(
+                    text = entity.word,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = formatTimestamp(entity.queriedAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (entity.sourceSentence.isNotBlank()) {
                     Text(
-                        text = entity.word,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = formatTimestamp(entity.queriedAt),
-                        style = MaterialTheme.typography.bodySmall,
+                        text = entity.sourceSentence,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
                     )
-                    if (entity.sourceSentence.isNotBlank()) {
-                        Text(
-                            text = entity.sourceSentence,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                        )
-                    }
-                    if (hasBadges) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (entity.sourceSentence.isNotBlank()) {
-                                InlineBadge(
-                                    icon = Icons.Default.EditNote,
-                                    text = "有原句",
-                                    contentDescription = "有来源句子",
-                                )
-                            }
-                            if (entity.userNote.isNotBlank()) {
-                                InlineBadge(
-                                    icon = Icons.Default.EditNote,
-                                    text = "有笔记",
-                                    contentDescription = "有笔记",
-                                )
-                            }
-                            if (entity.userExample.isNotBlank()) {
-                                InlineBadge(
-                                    icon = Icons.Default.EditNote,
-                                    text = "有例句",
-                                    contentDescription = "有例句",
-                                )
-                            }
-                            if (entity.promptVersion < CURRENT_PROMPT_VERSION) {
-                                InlineBadge(
-                                    icon = Icons.Default.Update,
-                                    text = "可更新",
-                                    contentDescription = "概念可更新",
-                                )
-                            }
+                }
+                if (hasBadges) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (entity.sourceSentence.isNotBlank()) {
+                            InlineBadge(
+                                icon = Icons.Default.EditNote,
+                                text = "原句",
+                                contentDescription = "有来源句子",
+                            )
+                        }
+                        if (entity.userNote.isNotBlank()) {
+                            InlineBadge(
+                                icon = Icons.Default.EditNote,
+                                text = "笔记",
+                                contentDescription = "有笔记",
+                            )
+                        }
+                        if (entity.userExample.isNotBlank()) {
+                            InlineBadge(
+                                icon = Icons.Default.EditNote,
+                                text = "例句",
+                                contentDescription = "有例句",
+                            )
+                        }
+                        if (entity.promptVersion < CURRENT_PROMPT_VERSION) {
+                            InlineBadge(
+                                icon = Icons.Default.Update,
+                                text = "可更新",
+                                contentDescription = "概念可更新",
+                            )
                         }
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { onFavoriteChange(!entity.isFavorite) }) {
-                        Icon(
-                            imageVector = if (entity.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                            contentDescription = if (entity.isFavorite) "取消收藏" else "收藏",
-                            tint = if (entity.isFavorite) {
-                                MaterialTheme.colorScheme.tertiary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                    }
-                    IconButton(onClick = onCopy) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "复制",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "删除",
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                    }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                IconButton(onClick = { onFavoriteChange(!entity.isFavorite) }) {
+                    Icon(
+                        imageVector = if (entity.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (entity.isFavorite) "取消收藏" else "收藏",
+                        tint = if (entity.isFavorite) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+                IconButton(onClick = onCopy) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "复制",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.error,
+                    )
                 }
             }
         }
@@ -304,18 +318,18 @@ private fun InlineBadge(
     contentDescription: String,
 ) {
     Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(12.dp),
                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
             )
             Text(

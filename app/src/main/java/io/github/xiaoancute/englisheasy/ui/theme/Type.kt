@@ -6,34 +6,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * 排版：统一无衬线（系统默认 sans，近 Roboto / Google Sans）。
- * 按 M3 Expressive 拉开层级——英雄词大而粗，正文舒适可读。
+ * 排版：系统 sans，偏编辑/词典气质。
+ * 参考 Apple Dictionary 的大词头 + Material You 的清晰正文。
  */
 val EnglishEasyTypography = Typography(
-    // 英雄词（概念卡顶部查询词）
     displaySmall = TextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 38.sp,
-        lineHeight = 44.sp,
-        letterSpacing = (-0.5).sp,
+        fontSize = 36.sp,
+        lineHeight = 42.sp,
+        letterSpacing = (-0.8).sp,
     ),
-    // 复习/新词大词、分支词
     headlineLarge = TextStyle(
         fontWeight = FontWeight.Bold,
-        fontSize = 30.sp,
-        lineHeight = 38.sp,
-        letterSpacing = (-0.3).sp,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = (-0.4).sp,
     ),
     headlineSmall = TextStyle(
         fontWeight = FontWeight.SemiBold,
-        fontSize = 24.sp,
-        lineHeight = 32.sp,
+        fontSize = 22.sp,
+        lineHeight = 30.sp,
+        letterSpacing = (-0.2).sp,
     ),
-    // 核心概念那句画面
     titleLarge = TextStyle(
         fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
+        fontSize = 19.sp,
         lineHeight = 28.sp,
+        letterSpacing = 0.sp,
     ),
     titleMedium = TextStyle(
         fontWeight = FontWeight.SemiBold,
@@ -50,37 +49,37 @@ val EnglishEasyTypography = Typography(
     bodyLarge = TextStyle(
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.3.sp,
+        lineHeight = 26.sp,
+        letterSpacing = 0.15.sp,
     ),
     bodyMedium = TextStyle(
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
-        lineHeight = 21.sp,
-        letterSpacing = 0.2.sp,
+        lineHeight = 22.sp,
+        letterSpacing = 0.15.sp,
     ),
     bodySmall = TextStyle(
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
-        lineHeight = 17.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.2.sp,
     ),
-    // section 小标签（核心概念 / 典型场景…），大写宽字距
     labelLarge = TextStyle(
         fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.8.sp,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 1.0.sp,
     ),
     labelMedium = TextStyle(
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.5.sp,
+        letterSpacing = 0.4.sp,
     ),
     labelSmall = TextStyle(
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
-        lineHeight = 15.sp,
-        letterSpacing = 0.5.sp,
+        lineHeight = 14.sp,
+        letterSpacing = 0.4.sp,
     ),
 )

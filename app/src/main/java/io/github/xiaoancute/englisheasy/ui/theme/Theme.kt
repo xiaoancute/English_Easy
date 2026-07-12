@@ -32,7 +32,8 @@ fun EnglishEasyTheme(
             seedColor = seedColor,
             isDark = darkTheme,
             isAmoled = false,
-            style = PaletteStyle.TonalSpot, // Pixel 默认风格
+            // Expressive：更饱满的 container 色阶，接近 Pixel 词典/翻译的「活」质感
+            style = PaletteStyle.Expressive,
         )
     }
 

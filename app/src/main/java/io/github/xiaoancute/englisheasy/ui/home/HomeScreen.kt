@@ -17,20 +17,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -42,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,6 +62,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
 import io.github.xiaoancute.englisheasy.data.model.ExpressionRescueCard
@@ -64,6 +71,7 @@ import io.github.xiaoancute.englisheasy.data.model.SentenceCard
 import io.github.xiaoancute.englisheasy.data.model.toShareText
 import io.github.xiaoancute.englisheasy.ui.components.ConceptCardView
 import io.github.xiaoancute.englisheasy.ui.components.EnglishEasySpacing
+import io.github.xiaoancute.englisheasy.ui.components.EmptyHero
 import io.github.xiaoancute.englisheasy.ui.components.ExpressionRescueCardView
 import io.github.xiaoancute.englisheasy.ui.components.SectionHeader
 import io.github.xiaoancute.englisheasy.ui.components.SentenceCardView
@@ -140,9 +148,26 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("英易 English Easy") },
+                title = {
+                    Column {
+                        Text(
+                            text = "英易",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "概念还原 · 不是词典",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -295,12 +320,13 @@ private fun LookupPanel(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(EnglishEasySpacing.HeroRadius),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 1.dp,
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ModeSelector(
                 selected = lookupMode,
@@ -394,25 +420,22 @@ private fun ModeSelector(
     selected: LookupMode,
     onSelected: (LookupMode) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        FilterChip(
-            selected = selected == LookupMode.Word,
-            onClick = { onSelected(LookupMode.Word) },
-            label = { Text("查词") },
-        )
-        FilterChip(
-            selected = selected == LookupMode.Sentence,
-            onClick = { onSelected(LookupMode.Sentence) },
-            label = { Text("拆句") },
-        )
-        FilterChip(
-            selected = selected == LookupMode.Expression,
-            onClick = { onSelected(LookupMode.Expression) },
-            label = { Text("想说") },
-        )
+    val modes = LookupMode.entries
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        modes.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = selected == mode,
+                onClick = { onSelected(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                label = {
+                    Text(
+                        text = mode.shortLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        letterSpacing = 0.sp,
+                    )
+                },
+            )
+        }
     }
 }
 
@@ -628,37 +651,53 @@ private fun IdleHint(
     lookupMode: LookupMode,
     onExampleLookup: (String) -> Unit,
 ) {
-    SurfaceCard(tone = SurfaceTone.Tonal) {
-        SectionHeader(
-            title = "示例",
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
+    ) {
+        EmptyHero(
+            icon = when (lookupMode) {
+                LookupMode.Word -> Icons.Default.AutoAwesome
+                LookupMode.Sentence -> Icons.Default.Search
+                LookupMode.Expression -> Icons.Default.Translate
+            },
+            title = when (lookupMode) {
+                LookupMode.Word -> "先摸到词的核心画面"
+                LookupMode.Sentence -> "拆开一句真实英文"
+                LookupMode.Expression -> "把中文想法变成英文"
+            },
+            body = when (lookupMode) {
+                LookupMode.Word -> "不记中文标签，而是还原母语者脑子里的意象。"
+                LookupMode.Sentence -> "看懂整句在干什么，而不只是逐词翻译。"
+                LookupMode.Expression -> "告诉我想说什么，生成更自然的英文说法。"
+            },
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            when (lookupMode) {
-                LookupMode.Word -> {
-                    ExampleChip(text = "spring", onClick = onExampleLookup)
-                    ExampleChip(text = "break the ice", onClick = onExampleLookup)
-                    ExampleChip(text = "worth", onClick = onExampleLookup)
-                }
-
-                LookupMode.Sentence -> {
-                    ExampleChip(
-                        text = "I'm not really in a position to make that call.",
-                        onClick = onExampleLookup,
-                    )
-                    ExampleChip(text = "This is out of my hands.", onClick = onExampleLookup)
-                }
-
-                LookupMode.Expression -> {
-                    ExampleChip(
-                        text = "这事我现在没法决定，不是我不愿意，是我没权限。",
-                        onClick = onExampleLookup,
-                    )
-                    ExampleChip(text = "我想礼貌地说我今天不太方便。", onClick = onExampleLookup)
+        SurfaceCard(tone = SurfaceTone.Plain, contentPadding = 16.dp) {
+            SectionHeader(
+                title = "试试这些",
+                subtitle = "点一下就能看效果",
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                when (lookupMode) {
+                    LookupMode.Word -> {
+                        ExampleChip(text = "spring", onClick = onExampleLookup)
+                        ExampleChip(text = "break the ice", onClick = onExampleLookup)
+                        ExampleChip(text = "worth", onClick = onExampleLookup)
+                    }
+                    LookupMode.Sentence -> {
+                        ExampleChip(
+                            text = "I'm not really in a position to make that call.",
+                            onClick = onExampleLookup,
+                        )
+                        ExampleChip(text = "This is out of my hands.", onClick = onExampleLookup)
+                    }
+                    LookupMode.Expression -> {
+                        ExampleChip(
+                            text = "这事我现在没法决定，不是我不愿意，是我没权限。",
+                            onClick = onExampleLookup,
+                        )
+                        ExampleChip(text = "我想礼貌地说我今天不太方便。", onClick = onExampleLookup)
+                    }
                 }
             }
         }
@@ -672,7 +711,14 @@ private fun ExampleChip(
 ) {
     AssistChip(
         onClick = { onClick(text) },
-        label = { Text(text) },
+        modifier = Modifier.fillMaxWidth(),
+        label = {
+            Text(
+                text = text,
+                maxLines = 2,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        },
         shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
         colors = AssistChipDefaults.assistChipColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -684,55 +730,68 @@ private fun ExampleChip(
 
 @Composable
 private fun SetupGuide() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = "未配置",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = "在设置里填入 Base URL、模型和 API Key。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    EmptyHero(
+        icon = Icons.Default.Settings,
+        title = "先配置一下 API",
+        body = "打开底部「设置」，填入 Base URL、模型和 API Key。支持任意 OpenAI 兼容端点。",
+    )
 }
 
 @Composable
 private fun LoadingIndicator() {
     val infiniteTransition = rememberInfiniteTransition(label = "loading")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0.45f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000),
+            animation = tween(900),
             repeatMode = RepeatMode.Reverse,
         ),
-        label = "alpha",
+        label = "pulse",
     )
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(148.dp),
+            shape = RoundedCornerShape(EnglishEasySpacing.HeroRadius),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = pulse),
+        ) {}
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(88.dp),
+            shape = RoundedCornerShape(EnglishEasySpacing.CardRadius),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = pulse),
+        ) {}
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(88.dp),
+            shape = RoundedCornerShape(EnglishEasySpacing.CardRadius),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = pulse * 0.85f),
+        ) {}
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+            )
             Text(
-                text = "处理中……",
+                text = "  正在生成概念卡…",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha * 0.7f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

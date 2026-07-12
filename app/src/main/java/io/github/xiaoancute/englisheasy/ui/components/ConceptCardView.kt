@@ -5,13 +5,19 @@ import android.media.MediaPlayer
 import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,12 +32,10 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.foundation.clickable
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -285,57 +289,63 @@ private fun HeaderActions(
     onRefreshClick: (() -> Unit)?,
     onPronounceClick: () -> Unit,
 ) {
+    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
+    val content = MaterialTheme.colorScheme.onPrimaryContainer
     Row(
         modifier = Modifier.fillMaxWidth(1f),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onShareClick != null) {
-            IconButton(onClick = onShareClick) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "分享",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-        }
-        if (onCopyClick != null) {
-            IconButton(onClick = onCopyClick) {
-                Icon(
-                    imageVector = Icons.Default.ContentCopy,
-                    contentDescription = "复制",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-        }
-        if (onRefreshClick != null) {
-            IconButton(onClick = onRefreshClick) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "重新生成",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-        }
-        IconButton(onClick = onPronounceClick) {
-            Icon(
-                imageVector = Icons.Default.VolumeUp,
-                contentDescription = "播放真人发音",
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            TonalIconButton(
+                onClick = onShareClick,
+                imageVector = Icons.Default.Share,
+                contentDescription = "分享",
+                containerColor = container,
+                contentColor = content,
             )
         }
+        if (onCopyClick != null) {
+            TonalIconButton(
+                onClick = onCopyClick,
+                imageVector = Icons.Default.ContentCopy,
+                contentDescription = "复制",
+                containerColor = container,
+                contentColor = content,
+            )
+        }
+        if (onRefreshClick != null) {
+            TonalIconButton(
+                onClick = onRefreshClick,
+                imageVector = Icons.Default.Refresh,
+                contentDescription = "重新生成",
+                containerColor = container,
+                contentColor = content,
+            )
+        }
+        TonalIconButton(
+            onClick = onPronounceClick,
+            imageVector = Icons.Default.VolumeUp,
+            contentDescription = "播放真人发音",
+            containerColor = container,
+            contentColor = content,
+        )
         if (onFavoriteChange != null) {
-            IconButton(onClick = { onFavoriteChange(!isFavorite) }) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                    contentDescription = if (isFavorite) "取消收藏" else "收藏",
-                    tint = if (isFavorite) {
-                        MaterialTheme.colorScheme.tertiary
-                    } else {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    },
-                )
-            }
+            TonalIconButton(
+                onClick = { onFavoriteChange(!isFavorite) },
+                imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                contentDescription = if (isFavorite) "取消收藏" else "收藏",
+                containerColor = if (isFavorite) {
+                    MaterialTheme.colorScheme.tertiaryContainer
+                } else {
+                    container
+                },
+                contentColor = if (isFavorite) {
+                    MaterialTheme.colorScheme.onTertiaryContainer
+                } else {
+                    content
+                },
+            )
         }
     }
 }
@@ -431,21 +441,50 @@ private fun AnchorChip(word: String) {
     }
 }
 
-/** 单个场景：例句 + 画面解释，保持轻量行块。 */
+/** 单个场景：例句 + 画面解释；左侧色条强调「例句优先」。 */
 @Composable
 private fun ScenarioItem(sc: Scenario) {
-    SurfaceCard(contentPadding = 16.dp) {
-        Text(
-            text = sc.englishExample,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = sc.pictureExplanation,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(EnglishEasySpacing.CardRadius),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .padding(vertical = 12.dp),
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = RoundedCornerShape(2.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                ) {}
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = sc.englishExample,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = sc.pictureExplanation,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
