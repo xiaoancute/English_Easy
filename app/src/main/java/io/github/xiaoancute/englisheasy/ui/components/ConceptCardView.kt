@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
@@ -31,7 +32,10 @@ import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -201,51 +205,47 @@ private fun WordHeader(
     onRefreshClick: (() -> Unit)?,
     onPronounceClick: () -> Unit,
 ) {
-    SurfaceCard(tone = SurfaceTone.Hero) {
+    SurfaceCard(tone = SurfaceTone.Plain, contentPadding = 12.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(1f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = word,
-                style = MaterialTheme.typography.displaySmall,
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 12.dp),
+                modifier = Modifier.weight(1f),
             )
-            EntryTypePill(entryType)
+            HeaderActions(
+                isFavorite = isFavorite,
+                onFavoriteChange = onFavoriteChange,
+                onShareClick = onShareClick,
+                onCopyClick = onCopyClick,
+                onRefreshClick = onRefreshClick,
+                onPronounceClick = onPronounceClick,
+            )
         }
 
         coreConcept?.let { core ->
-            Text(
-                text = core.picture,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                EntryTypePill(entryType)
                 Text(
-                    text = "锚词",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
-                    modifier = Modifier.padding(end = 8.dp),
+                    text = core.picture,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
                 )
                 HeroAnchorChip(core.anchorWord)
             }
-        }
-
-        HeaderActions(
-            isFavorite = isFavorite,
-            onFavoriteChange = onFavoriteChange,
-            onShareClick = onShareClick,
-            onCopyClick = onCopyClick,
-            onRefreshClick = onRefreshClick,
-            onPronounceClick = onPronounceClick,
-        )
+        } ?: EntryTypePill(entryType)
     }
 }
 
@@ -253,14 +253,14 @@ private fun WordHeader(
 private fun HeroAnchorChip(word: String) {
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.52f),
+        color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
         Text(
             text = word,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
 }
@@ -269,13 +269,13 @@ private fun HeroAnchorChip(word: String) {
 private fun EntryTypePill(entryType: EntryType) {
     Surface(
         shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {
         Text(
             text = entryType.label,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -289,40 +289,13 @@ private fun HeaderActions(
     onRefreshClick: (() -> Unit)?,
     onPronounceClick: () -> Unit,
 ) {
-    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
-    val content = MaterialTheme.colorScheme.onPrimaryContainer
+    var menuExpanded by remember { mutableStateOf(false) }
+    val container = MaterialTheme.colorScheme.surfaceContainerHigh
+    val content = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
-        modifier = Modifier.fillMaxWidth(1f),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (onShareClick != null) {
-            TonalIconButton(
-                onClick = onShareClick,
-                imageVector = Icons.Default.Share,
-                contentDescription = "分享",
-                containerColor = container,
-                contentColor = content,
-            )
-        }
-        if (onCopyClick != null) {
-            TonalIconButton(
-                onClick = onCopyClick,
-                imageVector = Icons.Default.ContentCopy,
-                contentDescription = "复制",
-                containerColor = container,
-                contentColor = content,
-            )
-        }
-        if (onRefreshClick != null) {
-            TonalIconButton(
-                onClick = onRefreshClick,
-                imageVector = Icons.Default.Refresh,
-                contentDescription = "重新生成",
-                containerColor = container,
-                contentColor = content,
-            )
-        }
         TonalIconButton(
             onClick = onPronounceClick,
             imageVector = Icons.Default.VolumeUp,
@@ -336,16 +309,58 @@ private fun HeaderActions(
                 imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                 contentDescription = if (isFavorite) "取消收藏" else "收藏",
                 containerColor = if (isFavorite) {
-                    MaterialTheme.colorScheme.tertiaryContainer
+                    MaterialTheme.colorScheme.secondaryContainer
                 } else {
                     container
                 },
                 contentColor = if (isFavorite) {
-                    MaterialTheme.colorScheme.onTertiaryContainer
+                    MaterialTheme.colorScheme.onSecondaryContainer
                 } else {
                     content
                 },
             )
+        }
+        if (onShareClick != null || onCopyClick != null || onRefreshClick != null) {
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "更多操作")
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    if (onShareClick != null) {
+                        DropdownMenuItem(
+                            text = { Text("分享") },
+                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onShareClick()
+                            },
+                        )
+                    }
+                    if (onCopyClick != null) {
+                        DropdownMenuItem(
+                            text = { Text("复制") },
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onCopyClick()
+                            },
+                        )
+                    }
+                    if (onRefreshClick != null) {
+                        DropdownMenuItem(
+                            text = { Text("重新生成") },
+                            leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onRefreshClick()
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -393,7 +408,7 @@ private fun SingleCardBody(
                     modifier = Modifier.clickable { expanded = true },
                 ) {
                     Text(
-                        text = "点击展开（建议先看完核心概念与场景）",
+                        text = "展开",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

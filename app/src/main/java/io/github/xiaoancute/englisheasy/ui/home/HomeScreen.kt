@@ -16,12 +16,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
@@ -90,6 +94,7 @@ fun HomeScreen(
     initialWord: String? = null,
     markLearningOnSuccess: Boolean = false,
     onWordConsumed: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -173,18 +178,11 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = "英易",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = "概念还原 · 不是词典",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    Text(
+                        text = "英易",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -193,18 +191,21 @@ fun HomeScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
+        val showFullLookup = state is HomeUiState.Idle || state is HomeUiState.Error
+        val pageModifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
                 .padding(
                     horizontal = EnglishEasySpacing.PageHorizontal,
                     vertical = EnglishEasySpacing.PageVertical,
-                ),
+                )
+                .then(
+                    if (showFullLookup) Modifier.verticalScroll(rememberScrollState()) else Modifier,
+                )
+        Column(
+            modifier = pageModifier,
             verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
         ) {
-            // Idle / Error 用完整面板（可切换模式）；有结果时用紧凑栏 + 清除
-            val showFullLookup = state is HomeUiState.Idle || state is HomeUiState.Error
             if (showFullLookup) {
                 LookupPanel(
                     lookupMode = lookupMode,
@@ -225,7 +226,7 @@ fun HomeScreen(
             }
 
             ResultArea(
-                modifier = Modifier.weight(1f),
+                modifier = if (showFullLookup) Modifier else Modifier.weight(1f),
                 state = state,
                 isConfigured = isConfigured,
                 lookupMode = lookupMode,
@@ -259,6 +260,7 @@ fun HomeScreen(
                     keyboard?.hide()
                 },
                 onRetry = { performLookup() },
+                onOpenSettings = onOpenSettings,
             )
         }
     }
@@ -274,21 +276,22 @@ private fun ResultSearchBar(
     onModeChange: (LookupMode) -> Unit,
 ) {
     var modeMenuExpanded by remember { mutableStateOf(false) }
-    SurfaceCard(tone = SurfaceTone.Plain, contentPadding = 8.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
             Box {
                 Surface(
                     onClick = { modeMenuExpanded = true },
-                    modifier = Modifier.width(62.dp),
+                    modifier = Modifier
+                        .widthIn(min = 62.dp)
+                        .heightIn(min = 56.dp),
                     shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
                     color = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
                     Box(
-                        modifier = Modifier.height(52.dp).fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -328,34 +331,24 @@ private fun ResultSearchBar(
                 ),
                 modifier = Modifier
                     .weight(1f)
-                    .height(52.dp),
+                    .heightIn(min = 56.dp),
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    Row {
+                        IconButton(onClick = onLookup) {
+                            Icon(Icons.Default.Search, contentDescription = "查询")
+                        }
+                        IconButton(onClick = onClear) {
+                            Icon(Icons.Default.Close, contentDescription = "清除结果，返回首页")
+                        }
+                    }
+                },
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
                     imeAction = ImeAction.Search,
                 ),
                 keyboardActions = KeyboardActions(onSearch = { onLookup() }),
             )
-            IconButton(onClick = onClear) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "清除结果，返回首页",
-                )
-            }
-            Button(
-                onClick = onLookup,
-                modifier = Modifier.height(52.dp),
-                shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
-            ) {
-                Text(
-                    when (lookupMode) {
-                        LookupMode.Word -> "查"
-                        LookupMode.Sentence -> "拆"
-                        LookupMode.Expression -> "说"
-                    },
-                )
-            }
-        }
     }
 }
 
@@ -393,11 +386,11 @@ private fun LookupPanel(
                         input = input,
                         onInputChange = onInputChange,
                         onLookup = onLookup,
-                        modifier = Modifier.weight(1f).height(52.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                     )
                     Button(
                         onClick = onLookup,
-                        modifier = Modifier.width(72.dp).height(52.dp),
+                        modifier = Modifier.widthIn(min = 72.dp).heightIn(min = 56.dp),
                         shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
                     ) {
                         Text("查")
@@ -413,7 +406,7 @@ private fun LookupPanel(
                 )
                 Button(
                     onClick = onLookup,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                     shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
                 ) {
                     Text(
@@ -508,6 +501,7 @@ private fun ResultArea(
     onExpressionCopy: (ExpressionRescueCard) -> Unit,
     onLookupExpression: (String, String) -> Unit,
     onRetry: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
         when (state) {
@@ -517,7 +511,7 @@ private fun ResultArea(
                 onExampleLookup = onExampleLookup,
             )
         } else {
-            SetupGuide()
+            SetupGuide(onOpenSettings)
         }
         HomeUiState.Loading -> LoadingIndicator()
         is HomeUiState.Success -> ConceptCardView(
@@ -711,20 +705,19 @@ private fun IdleHint(
                 LookupMode.Expression -> Icons.Default.Translate
             },
             title = when (lookupMode) {
-                LookupMode.Word -> "先摸到词的核心画面"
-                LookupMode.Sentence -> "拆开一句真实英文"
-                LookupMode.Expression -> "把中文想法变成英文"
+                LookupMode.Word -> "查一个词"
+                LookupMode.Sentence -> "拆一个句子"
+                LookupMode.Expression -> "写一句英文"
             },
             body = when (lookupMode) {
-                LookupMode.Word -> "不记中文标签，而是还原母语者脑子里的意象。"
-                LookupMode.Sentence -> "看懂整句在干什么，而不只是逐词翻译。"
-                LookupMode.Expression -> "告诉我想说什么，生成更自然的英文说法。"
+                LookupMode.Word -> "输入单词或短语。"
+                LookupMode.Sentence -> "粘贴你想看懂的英文。"
+                LookupMode.Expression -> "输入你想表达的中文。"
             },
         )
         SurfaceCard(tone = SurfaceTone.Plain, contentPadding = 16.dp) {
             SectionHeader(
                 title = "试试这些",
-                subtitle = "点一下就能看效果",
             )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 when (lookupMode) {
@@ -778,11 +771,16 @@ private fun ExampleChip(
 }
 
 @Composable
-private fun SetupGuide() {
+private fun SetupGuide(onOpenSettings: () -> Unit) {
     EmptyHero(
         icon = Icons.Default.Settings,
-        title = "先配置一下 API",
-        body = "打开底部「设置」，填入 Base URL、模型和 API Key。支持任意 OpenAI 兼容端点。",
+        title = "需要配置 API",
+        body = "选择服务商并填入 API Key。",
+        action = {
+            Button(onClick = onOpenSettings) {
+                Text("去设置")
+            }
+        },
     )
 }
 

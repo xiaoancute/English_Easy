@@ -51,6 +51,10 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
+    fun restore(entity: ConceptCardEntity) {
+        viewModelScope.launch { dao.insert(entity) }
+    }
+
     fun clearAll() {
         viewModelScope.launch {
             dao.deleteAllNonFavorites()

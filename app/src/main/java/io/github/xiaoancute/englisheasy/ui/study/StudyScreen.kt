@@ -211,7 +211,6 @@ private fun TodaySection(
         item {
             LearningOverviewCard(
                 dashboard = dashboard,
-                task = task,
                 onOpenPacks = onOpenPacks,
             )
         }
@@ -230,7 +229,6 @@ private fun TodaySection(
 @Composable
 private fun LearningOverviewCard(
     dashboard: LearningDashboard,
-    task: TodayStudyTask,
     onOpenPacks: () -> Unit,
 ) {
     SurfaceCard(tone = SurfaceTone.Tonal) {
@@ -258,10 +256,7 @@ private fun LearningOverviewCard(
             )
         }
 
-        CompactInfoRow(label = "下一步", value = taskLabel(task))
         CompactInfoRow(label = "到期复习", value = dashboard.dueReviewCount.toString())
-        CompactInfoRow(label = "今日新词", value = dashboard.todayWordCount.toString())
-        CompactInfoRow(label = "可安排", value = dashboard.availableCount.toString())
         CompactInfoRow(label = "已跳过", value = dashboard.skippedCount.toString())
     }
 }
@@ -324,7 +319,7 @@ private fun NewWordTaskCard(
     onSkip: () -> Unit,
 ) {
     SurfaceCard(contentPadding = 18.dp) {
-        WordStatusLabel(text = "今日新词 · $remainingCount 个")
+        WordStatusLabel(text = "今日新词 · 剩余 $remainingCount")
         Text(
             text = word,
             style = MaterialTheme.typography.headlineLarge,
@@ -332,11 +327,6 @@ private fun NewWordTaskCard(
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = "新词",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -346,7 +336,7 @@ private fun NewWordTaskCard(
                 onClick = onStart,
                 modifier = Modifier.weight(1f),
             ) {
-                Text("查概念并造句")
+                Text("开始")
             }
             OutlinedButton(onClick = onSkip) {
                 Text("跳过")
@@ -558,15 +548,6 @@ private fun QuietProgressBar(
                     .background(MaterialTheme.colorScheme.primary),
             )
         }
-    }
-}
-
-private fun taskLabel(task: TodayStudyTask): String {
-    return when (task) {
-        is TodayStudyTask.Review -> "复习 ${task.dueReviewCount} 个到期词"
-        is TodayStudyTask.NewWord -> "查新词并造句 · 剩余 ${task.remainingCount} 个"
-        TodayStudyTask.ChoosePack -> "选词库"
-        TodayStudyTask.Done -> "今日完成"
     }
 }
 

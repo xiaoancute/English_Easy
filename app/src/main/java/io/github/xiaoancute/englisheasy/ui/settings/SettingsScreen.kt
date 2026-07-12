@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -22,10 +23,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -244,7 +248,7 @@ private fun AiServiceSection(
 
     SettingsCard(
         title = "AI 服务",
-        subtitle = "使用你自己的 OpenAI 兼容 API，Key 只保存在本机。",
+        subtitle = "Key 只保存在本机。",
         trailing = {
             StatusPill(
                 text = if (configured) "已配置" else "未配置",
@@ -274,26 +278,6 @@ private fun AiServiceSection(
         }
 
         OutlinedTextField(
-            value = baseUrl,
-            onValueChange = onBaseUrlChange,
-            label = { Text("Base URL") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            supportingText = { Text("预设会自动填写；自定义服务需兼容 OpenAI /models 与 /chat/completions") },
-        )
-
-        OutlinedTextField(
-            value = model,
-            onValueChange = onModelChange,
-            label = { Text("模型名") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            supportingText = { Text("预设会填推荐模型，也可以手动改成账号可用的模型") },
-        )
-
-        OutlinedTextField(
             value = apiKey,
             onValueChange = onApiKeyChange,
             label = { Text("API Key") },
@@ -310,7 +294,6 @@ private fun AiServiceSection(
                     )
                 }
             },
-            supportingText = { Text("本地 Ollama 可保留预设填入的 ollama") },
         )
 
         Row(
@@ -322,7 +305,7 @@ private fun AiServiceSection(
                 enabled = !isTestingConnection,
                 modifier = Modifier
                     .weight(1f)
-                    .height(52.dp),
+                    .heightIn(min = 52.dp),
                 shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
             ) {
                 Text(if (isTestingConnection) "测试中..." else "测试连接")
@@ -331,11 +314,41 @@ private fun AiServiceSection(
                 onClick = onSave,
                 modifier = Modifier
                     .weight(1f)
-                    .height(52.dp),
+                    .heightIn(min = 52.dp),
                 shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
             ) {
                 Text("保存配置")
             }
+        }
+
+        var showAdvanced by remember { mutableStateOf(selectedProvider == ProviderPreset.Custom) }
+        LaunchedEffect(selectedProvider) {
+            if (selectedProvider == ProviderPreset.Custom) showAdvanced = true
+        }
+        TextButton(onClick = { showAdvanced = !showAdvanced }) {
+            Icon(
+                imageVector = if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+            )
+            Text("高级设置")
+        }
+        if (showAdvanced) {
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = onBaseUrlChange,
+                label = { Text("Base URL") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+            )
+            OutlinedTextField(
+                value = model,
+                onValueChange = onModelChange,
+                label = { Text("模型名") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+            )
         }
     }
 }
@@ -346,26 +359,16 @@ private fun ProviderChip(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.clickable(onClick = onClick),
-        color = if (selected) {
-            MaterialTheme.colorScheme.secondaryContainer
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(provider.label) },
+        leadingIcon = if (selected) {
+            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
+            null
         },
-        contentColor = if (selected) {
-            MaterialTheme.colorScheme.onSecondaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
-    ) {
-        Text(
-            text = provider.label,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        )
-    }
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)

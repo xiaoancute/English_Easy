@@ -19,9 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,6 +28,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -36,6 +38,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -50,11 +56,13 @@ import io.github.xiaoancute.englisheasy.ui.components.LetterAvatar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     onWordClick: (String) -> Unit,
+    onLookupClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
@@ -67,9 +75,11 @@ fun HistoryScreen(
         cards = history,
         onWordClick = onWordClick,
         onDelete = viewModel::delete,
+        onRestore = viewModel::restore,
         onFavoriteChange = viewModel::setFavorite,
         exportText = viewModel::exportText,
         onClearAll = viewModel::clearAll,
+        onLookupClick = onLookupClick,
         modifier = modifier,
     )
 }
@@ -78,6 +88,7 @@ fun HistoryScreen(
 @Composable
 fun FavoritesScreen(
     onWordClick: (String) -> Unit,
+    onLookupClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
@@ -90,9 +101,11 @@ fun FavoritesScreen(
         cards = favorites,
         onWordClick = onWordClick,
         onDelete = viewModel::delete,
+        onRestore = viewModel::restore,
         onFavoriteChange = viewModel::setFavorite,
         exportText = viewModel::exportText,
         onClearAll = null,
+        onLookupClick = onLookupClick,
         modifier = modifier,
     )
 }
@@ -106,12 +119,38 @@ private fun SavedCardsScreen(
     cards: List<ConceptCardEntity>,
     onWordClick: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onRestore: (ConceptCardEntity) -> Unit,
     onFavoriteChange: (String, Boolean) -> Unit,
     exportText: (ConceptCardEntity) -> String?,
     onClearAll: (() -> Unit)?,
+    onLookupClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var confirmClear by remember { mutableStateOf(false) }
+
+    if (confirmClear && onClearAll != null) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("清空查询历史？") },
+            text = { Text("收藏内容会保留。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirmClear = false
+                        onClearAll()
+                    },
+                ) { Text("清空") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmClear = false }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
 
     Scaffold(
         modifier = modifier,
@@ -126,7 +165,7 @@ private fun SavedCardsScreen(
                 },
                 actions = {
                     if (cards.isNotEmpty() && onClearAll != null) {
-                        IconButton(onClick = onClearAll) {
+                        IconButton(onClick = { confirmClear = true }) {
                             Icon(Icons.Default.DeleteSweep, contentDescription = "清空历史")
                         }
                     }
@@ -136,6 +175,7 @@ private fun SavedCardsScreen(
                 ),
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         if (cards.isEmpty()) {
             val emptyBody = if (title == "查询历史") {
@@ -147,6 +187,7 @@ private fun SavedCardsScreen(
                 icon = emptyIcon,
                 title = emptyText,
                 body = emptyBody,
+                onLookupClick = onLookupClick,
                 modifier = Modifier.padding(innerPadding),
             )
         } else {
@@ -164,7 +205,17 @@ private fun SavedCardsScreen(
                     HistoryItem(
                         entity = entity,
                         onClick = { onWordClick(entity.word) },
-                        onDelete = { onDelete(entity.word) },
+                        onDelete = {
+                            onDelete(entity.word)
+                            scope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "${entity.word} 已删除",
+                                    actionLabel = "撤销",
+                                    withDismissAction = true,
+                                )
+                                if (result == SnackbarResult.ActionPerformed) onRestore(entity)
+                            }
+                        },
                         onFavoriteChange = { onFavoriteChange(entity.word, it) },
                         onCopy = {
                             exportText(entity)?.let { text ->
@@ -183,6 +234,7 @@ private fun EmptyState(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     body: String,
+    onLookupClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -195,6 +247,11 @@ private fun EmptyState(
             icon = icon,
             title = title,
             body = body,
+            action = {
+                Button(onClick = onLookupClick) {
+                    Text("去查词")
+                }
+            },
         )
     }
 }
@@ -207,10 +264,13 @@ private fun HistoryItem(
     onFavoriteChange: (Boolean) -> Unit,
     onCopy: () -> Unit,
 ) {
-    val hasBadges = entity.userNote.isNotBlank() ||
-        entity.sourceSentence.isNotBlank() ||
-        entity.userExample.isNotBlank() ||
-        entity.promptVersion < CURRENT_PROMPT_VERSION
+    val metadata = buildList {
+        if (entity.sourceSentence.isNotBlank()) add("原句")
+        if (entity.userNote.isNotBlank()) add("笔记")
+        if (entity.userExample.isNotBlank()) add("例句")
+        if (entity.promptVersion < CURRENT_PROMPT_VERSION) add("可更新")
+    }
+    var menuExpanded by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier
@@ -232,12 +292,47 @@ private fun HistoryItem(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(
-                    text = entity.word,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = entity.word,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { onFavoriteChange(!entity.isFavorite) }) {
+                        Icon(
+                            imageVector = if (entity.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = if (entity.isFavorite) "取消收藏" else "收藏",
+                        )
+                    }
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "更多操作")
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("复制") },
+                                leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onCopy()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("删除") },
+                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onDelete()
+                                },
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = formatTimestamp(entity.queriedAt),
                     style = MaterialTheme.typography.bodySmall,
@@ -248,99 +343,17 @@ private fun HistoryItem(
                         text = entity.sourceSentence,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
+                        maxLines = 1,
                     )
                 }
-                if (hasBadges) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (entity.sourceSentence.isNotBlank()) {
-                            InlineBadge(
-                                icon = Icons.Default.EditNote,
-                                text = "原句",
-                                contentDescription = "有来源句子",
-                            )
-                        }
-                        if (entity.userNote.isNotBlank()) {
-                            InlineBadge(
-                                icon = Icons.Default.EditNote,
-                                text = "笔记",
-                                contentDescription = "有笔记",
-                            )
-                        }
-                        if (entity.userExample.isNotBlank()) {
-                            InlineBadge(
-                                icon = Icons.Default.EditNote,
-                                text = "例句",
-                                contentDescription = "有例句",
-                            )
-                        }
-                        if (entity.promptVersion < CURRENT_PROMPT_VERSION) {
-                            InlineBadge(
-                                icon = Icons.Default.Update,
-                                text = "可更新",
-                                contentDescription = "概念可更新",
-                            )
-                        }
-                    }
-                }
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = { onFavoriteChange(!entity.isFavorite) }) {
-                    Icon(
-                        imageVector = if (entity.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = if (entity.isFavorite) "取消收藏" else "收藏",
-                        tint = if (entity.isFavorite) {
-                            MaterialTheme.colorScheme.tertiary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
-                IconButton(onClick = onCopy) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "复制",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "删除",
-                        tint = MaterialTheme.colorScheme.error,
+                if (metadata.isNotEmpty()) {
+                    Text(
+                        text = metadata.joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun InlineBadge(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    text: String,
-    contentDescription: String,
-) {
-    Surface(
-        shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                modifier = Modifier.size(12.dp),
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
         }
     }
 }
@@ -361,3 +374,7 @@ private fun formatTimestamp(millis: Long): String {
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     return sdf.format(Date(millis))
 }
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem

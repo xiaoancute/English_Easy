@@ -33,15 +33,14 @@ import androidx.compose.ui.unit.dp
  * 参考：Pixel / Material You 的 8dp 节奏 + 词典类 App 的宽松阅读留白。
  */
 object EnglishEasySpacing {
-    val PageHorizontal = 20.dp
+    val PageHorizontal = 16.dp
     val PageVertical = 12.dp
-    val SectionGap = 20.dp
-    val ItemGap = 12.dp
-    val SurfacePadding = 20.dp
-    val CardRadius = 22.dp
-    val HeroRadius = 28.dp
+    val SectionGap = 16.dp
+    val ItemGap = 10.dp
+    val SurfacePadding = 16.dp
+    val CardRadius = 8.dp
+    val HeroRadius = 12.dp
     val PillRadius = 28.dp
-    val SearchHeight = 56.dp
 }
 
 enum class SurfaceTone { Plain, Tonal, Hero }
@@ -63,18 +62,11 @@ fun SurfaceCard(
     } else {
         EnglishEasySpacing.CardRadius
     }
-    val shadow = if (tone == SurfaceTone.Hero) 3.dp else 0.dp
-    val tonal = when (tone) {
-        SurfaceTone.Hero -> 0.dp
-        SurfaceTone.Tonal -> 1.dp
-        SurfaceTone.Plain -> 0.dp
-    }
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(radius),
         color = container,
-        tonalElevation = tonal,
-        shadowElevation = shadow,
+        tonalElevation = if (tone == SurfaceTone.Tonal) 1.dp else 0.dp,
     ) {
         Column(
             modifier = Modifier.padding(contentPadding),
@@ -184,7 +176,7 @@ fun SectionHeader(
     }
 }
 
-/** 居中空状态 —— 参考 Google 翻译首页的「大图标 + 短说明」。 */
+/** 紧凑空状态，保留页面上下文并把行动放在说明旁边。 */
 @Composable
 fun EmptyHero(
     icon: ImageVector,
@@ -196,27 +188,27 @@ fun EmptyHero(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 28.dp),
+            .padding(horizontal = 12.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(72.dp),
+            modifier = Modifier.size(48.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(22.dp),
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )

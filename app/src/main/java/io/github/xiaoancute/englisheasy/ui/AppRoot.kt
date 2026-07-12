@@ -93,17 +93,20 @@ fun AppRoot() {
                 initialWord = pendingLookup?.word,
                 markLearningOnSuccess = pendingLookup?.source == LookupSource.StudyTask,
                 onWordConsumed = { pendingLookup = null },
+                onOpenSettings = { selectedTab = 4 },
             )
             1 -> HistoryScreen(
                 onWordClick = { word ->
                     pendingLookup = PendingLookup(word, LookupSource.Normal)
                 },
+                onLookupClick = { selectedTab = 0 },
                 modifier = Modifier.padding(innerPadding),
             )
             2 -> FavoritesScreen(
                 onWordClick = { word ->
                     pendingLookup = PendingLookup(word, LookupSource.Normal)
                 },
+                onLookupClick = { selectedTab = 0 },
                 modifier = Modifier.padding(innerPadding),
             )
             3 -> StudyScreen(
