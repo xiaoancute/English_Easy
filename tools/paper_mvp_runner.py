@@ -23,9 +23,9 @@ from typing import Any, Optional
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROMPT_PATH = ROOT / "system_prompt_v3.md"
+PROMPT_PATH = ROOT / "docs/system_prompt_v3.md"
 KOTLIN_PROMPT_PATH = ROOT / "app/src/main/java/io/github/xiaoancute/englisheasy/data/prompt/SystemPrompt.kt"
-DEFAULT_OUTPUT_DIR = ROOT / "paper_runs"
+DEFAULT_OUTPUT_DIR = ROOT / "docs/paper_runs"
 DEFAULT_ENV_FILE = ROOT / "paper_mvp.env"
 MINIMAL_REGRESSION = {
     "run",

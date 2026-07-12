@@ -1,5 +1,6 @@
 package io.github.xiaoancute.englisheasy.data.vocabulary
 
+import io.github.xiaoancute.englisheasy.data.util.WordNormalizer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -40,7 +41,7 @@ object VocabularyCatalog {
 
     fun decode(rawJson: String): List<VocabularyEntry> {
         return json.decodeFromString<List<VocabularyEntry>>(rawJson)
-            .map { it.copy(word = normalizeWord(it.word)) }
+            .map { it.copy(word = WordNormalizer.normalize(it.word)) }
             .filter { it.word.isNotBlank() }
             .distinctBy { it.stage to it.word }
     }
@@ -49,7 +50,7 @@ object VocabularyCatalog {
         entries: List<VocabularyEntry>,
         learnedWords: Set<String>,
     ): List<VocabularyPack> {
-        val normalizedLearnedWords = learnedWords.map(::normalizeWord).toSet()
+        val normalizedLearnedWords = learnedWords.map(WordNormalizer::normalize).toSet()
         val grouped = entries.groupBy { it.stage }
         return stageOrder.mapNotNull { stage ->
             val stageEntries = grouped[stage].orEmpty().sortedBy { it.word }
@@ -63,12 +64,5 @@ object VocabularyCatalog {
                 )
             }
         }
-    }
-
-    private fun normalizeWord(word: String): String {
-        return word
-            .trim()
-            .lowercase()
-            .replace(Regex("\\s+"), " ")
     }
 }

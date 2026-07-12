@@ -13,15 +13,22 @@ import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
 import io.github.xiaoancute.englisheasy.data.review.ReviewGrade
 import io.github.xiaoancute.englisheasy.data.review.ReviewScheduler
+import io.github.xiaoancute.englisheasy.data.util.WordNormalizer
 import io.github.xiaoancute.englisheasy.data.vocabulary.VocabularyPack
 import io.github.xiaoancute.englisheasy.data.vocabulary.VocabularyRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -31,6 +38,7 @@ data class StudyCard(
     val card: ConceptCard?,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class StudyViewModel @Inject constructor(
     private val dao: ConceptCardDao,
@@ -47,24 +55,36 @@ class StudyViewModel @Inject constructor(
 
     val selectedPackLabel: StateFlow<String?> = selectedPackLabelValue.asStateFlow()
 
-    val dueCards: StateFlow<List<StudyCard>> = combine(
-        dao.getDueReviews(System.currentTimeMillis()),
-        reviewWords,
-    ) { entities, review ->
-        val reviewSet = review.map(::normalizeWord).toSet()
-        entities
-            .filter { entity -> normalizeWord(entity.word) in reviewSet }
-            .map { entity ->
-                StudyCard(
-                    entity = entity,
-                    card = runCatching { entity.toCard(json) }.getOrNull(),
-                )
+    /** 周期性刷新“现在”，避免到期词卡在会话中永远不出现。 */
+    private val nowFlow = flow {
+        while (currentCoroutineContext().isActive) {
+            emit(System.currentTimeMillis())
+            delay(DUE_REFRESH_INTERVAL_MS)
+        }
+    }
+
+    val dueCards: StateFlow<List<StudyCard>> = nowFlow
+        .flatMapLatest { now ->
+            combine(
+                dao.getDueReviews(now),
+                reviewWords,
+            ) { entities, review ->
+                val reviewSet = review.map(WordNormalizer::normalize).toSet()
+                entities
+                    .filter { entity -> WordNormalizer.normalize(entity.word) in reviewSet }
+                    .map { entity ->
+                        StudyCard(
+                            entity = entity,
+                            card = runCatching { entity.toCard(json) }.getOrNull(),
+                        )
+                    }
             }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = emptyList(),
-    )
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
 
     val vocabularyPacks: StateFlow<List<VocabularyPack>> = learningWords
         .map { words -> vocabularyRepository.getPacks(words.toSet()) }
@@ -89,9 +109,9 @@ class StudyViewModel @Inject constructor(
         selectedPackWords,
         blockedWords,
     ) { packWords, blocked ->
-        val blockedSet = blocked.map(::normalizeWord).toSet()
+        val blockedSet = blocked.map(WordNormalizer::normalize).toSet()
         packWords
-            .map(::normalizeWord)
+            .map(WordNormalizer::normalize)
             .distinct()
             .filterNot { it in blockedSet }
     }.stateIn(
@@ -119,9 +139,9 @@ class StudyViewModel @Inject constructor(
         selectedPackWords,
         wordLearningStateRepository.observeSkippedWords(),
     ) { packWords, skipped ->
-        val skippedSet = skipped.map(::normalizeWord).toSet()
+        val skippedSet = skipped.map(WordNormalizer::normalize).toSet()
         packWords
-            .map(::normalizeWord)
+            .map(WordNormalizer::normalize)
             .distinct()
             .filter { it in skippedSet }
     }.stateIn(
@@ -135,10 +155,10 @@ class StudyViewModel @Inject constructor(
         dao.observeWeakWords(WeakWordPolicy.STRENGTH_THRESHOLD),
         reviewWords,
     ) { packWords, weak, review ->
-        val packSet = packWords.map(::normalizeWord).toSet()
-        val reviewSet = review.map(::normalizeWord).toSet()
+        val packSet = packWords.map(WordNormalizer::normalize).toSet()
+        val reviewSet = review.map(WordNormalizer::normalize).toSet()
         weak
-            .map(::normalizeWord)
+            .map(WordNormalizer::normalize)
             .distinct()
             .filter { word -> word in reviewSet }
             .filter { word -> packSet.isEmpty() || word in packSet }
@@ -254,13 +274,6 @@ class StudyViewModel @Inject constructor(
         }
     }
 
-    private fun normalizeWord(word: String): String {
-        return word
-            .trim()
-            .lowercase()
-            .replace(Regex("\\s+"), " ")
-    }
-
     private fun packLabel(pack: VocabularyPack): String {
         return "${pack.stage.label}词库"
     }
@@ -268,5 +281,6 @@ class StudyViewModel @Inject constructor(
     private companion object {
         const val TODAY_WORD_LIMIT = 10
         const val MASTERED_STRENGTH = 5
+        const val DUE_REFRESH_INTERVAL_MS = 30_000L
     }
 }

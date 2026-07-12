@@ -14,6 +14,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +29,7 @@ import io.github.xiaoancute.englisheasy.ui.settings.SettingsScreen
 import io.github.xiaoancute.englisheasy.ui.study.StudyScreen
 
 /**
- * 顶层 Composable —— 查词 / 历史 / 收藏 / 设置。
+ * 顶层 Composable —— 查词 / 历史 / 收藏 / 学习 / 设置。
  */
 @Composable
 fun AppRoot() {
@@ -36,8 +37,10 @@ fun AppRoot() {
     var pendingLookup by remember { mutableStateOf<PendingLookup?>(null) }
 
     // 其他页点击词条 → 跳转到 Home 并触发查询
-    if (pendingLookup != null) {
-        selectedTab = 0
+    LaunchedEffect(pendingLookup) {
+        if (pendingLookup != null) {
+            selectedTab = 0
+        }
     }
 
     Scaffold(

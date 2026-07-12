@@ -5,10 +5,12 @@ import io.github.xiaoancute.englisheasy.data.local.ConceptCardEntity
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
 import io.github.xiaoancute.englisheasy.data.model.ExpressionRescueCard
 import io.github.xiaoancute.englisheasy.data.model.SentenceCard
+import io.github.xiaoancute.englisheasy.data.model.validateStructure
 import io.github.xiaoancute.englisheasy.data.prompt.CURRENT_PROMPT_VERSION
 import io.github.xiaoancute.englisheasy.data.prompt.SYSTEM_PROMPT_V3
 import io.github.xiaoancute.englisheasy.data.settings.ProviderConfig
 import io.github.xiaoancute.englisheasy.data.settings.SettingsRepository
+import io.github.xiaoancute.englisheasy.data.util.WordNormalizer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerializationException
@@ -21,10 +23,10 @@ import javax.inject.Singleton
 /**
  * 编排 LLM 调用流程 + Room 缓存：
  *  1. 查本地缓存（word 主键，promptVersion 匹配 CURRENT_PROMPT_VERSION）
- *  2. 缓存命中且版本匹配 → 直接返回
- *  3. 缓存未命中或版本过期 → 调用 LLM
- *  4. LLM 响应成功 → 存入缓存并返回
- *  5. 失败时自动重试一次（把错误信息回灌给 LLM）
+ *  2. 无上下文且缓存命中且版本匹配 → 直接返回
+ *  3. 否则调用 LLM；解析后校验卡片结构
+ *  4. 写入缓存：带上下文时不覆盖已有通用卡，只更新来源句子等元数据
+ *  5. 格式失败时自动重试一次（把错误信息回灌给 LLM）
  */
 @Singleton
 class ConceptRepository @Inject constructor(
@@ -34,19 +36,19 @@ class ConceptRepository @Inject constructor(
     private val json: Json,
 ) {
     fun observeFavorite(word: String): Flow<Boolean> {
-        return dao.observeFavorite(normalizeEntry(word)).map { it == true }
+        return dao.observeFavorite(WordNormalizer.normalize(word)).map { it == true }
     }
 
     fun observeNote(word: String): Flow<String> {
-        return dao.observeNote(normalizeEntry(word)).map { it.orEmpty() }
+        return dao.observeNote(WordNormalizer.normalize(word)).map { it.orEmpty() }
     }
 
     fun observeExample(word: String): Flow<String> {
-        return dao.observeExample(normalizeEntry(word)).map { it.orEmpty() }
+        return dao.observeExample(WordNormalizer.normalize(word)).map { it.orEmpty() }
     }
 
     fun observeSourceSentence(word: String): Flow<String> {
-        return dao.observeSourceSentence(normalizeEntry(word)).map { it.orEmpty() }
+        return dao.observeSourceSentence(WordNormalizer.normalize(word)).map { it.orEmpty() }
     }
 
     suspend fun lookup(
@@ -54,22 +56,23 @@ class ConceptRepository @Inject constructor(
         contextSentence: String = "",
         forceRefresh: Boolean = false,
     ): Result<ConceptCard> = runCatching {
-        val normalized = normalizeEntry(word)
+        val normalized = WordNormalizer.normalize(word)
         val normalizedContext = contextSentence.trim()
         require(normalized.isNotEmpty()) { "词或短语不能为空" }
 
-        // 1. 查缓存
+        // 1. 无上下文时优先走通用缓存
         val cached = dao.get(normalized)
+        val hasFreshGeneralCache = cached != null &&
+            cached.promptVersion == CURRENT_PROMPT_VERSION
         if (
             normalizedContext.isBlank() &&
             !forceRefresh &&
-            cached != null &&
-            cached.promptVersion == CURRENT_PROMPT_VERSION
+            hasFreshGeneralCache
         ) {
-            return@runCatching cached.toCard(json)
+            return@runCatching cached!!.toCard(json)
         }
 
-        // 2. 缓存未命中或版本过期 → 调用 LLM
+        // 2. 缓存未命中、强制刷新、或带上下文 → 调用 LLM
         val cfg = settings.load()
         require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
         val card = lookupWithJsonRetry(
@@ -78,10 +81,19 @@ class ConceptRepository @Inject constructor(
             cfg = cfg,
         )
 
-        // 3. 存入缓存
+        // 3. 带上下文且已有通用卡：保留通用 cardJson，只更新来源句子等元数据
+        val preserveGeneralCard = normalizedContext.isNotBlank() &&
+            !forceRefresh &&
+            hasFreshGeneralCache
+        val cardToStore = if (preserveGeneralCard) {
+            cached!!.toCard(json)
+        } else {
+            card
+        }
+
         dao.insert(
             ConceptCardEntity.fromCard(
-                card = card,
+                card = cardToStore,
                 json = json,
                 isFavorite = cached?.isFavorite == true,
                 sourceSentence = normalizedContext.ifBlank { cached?.sourceSentence.orEmpty() },
@@ -93,25 +105,26 @@ class ConceptRepository @Inject constructor(
                 lastReviewedAt = cached?.lastReviewedAt ?: 0L,
             )
         )
+        // 本次会话仍返回 LLM 结果（带上下文时展示语境版）
         card
     }.recoverCatching {
         throw it.toUserFacingException()
     }
 
     suspend fun setFavorite(word: String, isFavorite: Boolean) {
-        val normalized = normalizeEntry(word)
+        val normalized = WordNormalizer.normalize(word)
         require(normalized.isNotEmpty()) { "词或短语不能为空" }
         dao.setFavorite(normalized, isFavorite)
     }
 
     suspend fun setNote(word: String, note: String) {
-        val normalized = normalizeEntry(word)
+        val normalized = WordNormalizer.normalize(word)
         require(normalized.isNotEmpty()) { "词或短语不能为空" }
         dao.setNote(normalized, note)
     }
 
     suspend fun setExample(word: String, example: String) {
-        val normalized = normalizeEntry(word)
+        val normalized = WordNormalizer.normalize(word)
         require(normalized.isNotEmpty()) { "词或短语不能为空" }
         dao.setExample(normalized, example)
     }
@@ -121,7 +134,7 @@ class ConceptRepository @Inject constructor(
         userExample: String,
         contextSentence: String = "",
     ): Result<ExampleFeedback> = runCatching {
-        val normalized = normalizeEntry(word)
+        val normalized = WordNormalizer.normalize(word)
         val trimmedExample = userExample.trim()
         require(normalized.isNotEmpty()) { "词或短语不能为空" }
         require(trimmedExample.isNotEmpty()) { "请先写一句自己的英文例句" }
@@ -220,7 +233,7 @@ class ConceptRepository @Inject constructor(
             ?: throw LlmResponseFormatException("LLM 响应里没有 choices/message")
         val cleanJson = extractJson(raw) ?: throw LlmResponseFormatException("响应里找不到 JSON 主体")
         return try {
-            json.decodeFromString<ConceptCard>(cleanJson)
+            json.decodeFromString<ConceptCard>(cleanJson).also { it.ensureValid() }
         } catch (error: SerializationException) {
             throw LlmResponseFormatException("JSON 解析失败：${error.message}", error)
         }
@@ -340,8 +353,15 @@ class ConceptRepository @Inject constructor(
         return match.value
     }
 
-    private fun normalizeEntry(value: String): String {
-        return value.trim().lowercase().replace(Regex("""\s+"""), " ")
+    private fun ConceptCard.ensureValid() {
+        try {
+            validateStructure()
+        } catch (error: IllegalArgumentException) {
+            throw LlmResponseFormatException(
+                "卡片结构不完整：${error.message}",
+                error,
+            )
+        }
     }
 
     private class LlmResponseFormatException(

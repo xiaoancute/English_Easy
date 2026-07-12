@@ -3,6 +3,7 @@ package io.github.xiaoancute.englisheasy.data.local
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import io.github.xiaoancute.englisheasy.data.learning.LearningState
+import io.github.xiaoancute.englisheasy.data.util.WordNormalizer
 
 @Entity(tableName = "word_learning_states")
 data class WordLearningStateEntity(
@@ -18,14 +19,10 @@ data class WordLearningStateEntity(
             updatedAt: Long = System.currentTimeMillis(),
         ): WordLearningStateEntity {
             return WordLearningStateEntity(
-                word = normalizeWord(word),
+                word = WordNormalizer.normalize(word),
                 state = state.storageValue,
                 updatedAt = updatedAt,
             )
-        }
-
-        fun normalizeWord(word: String): String {
-            return word.trim().lowercase().replace(Regex("""\s+"""), " ")
         }
     }
 }

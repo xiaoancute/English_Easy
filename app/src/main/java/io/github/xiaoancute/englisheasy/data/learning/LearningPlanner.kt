@@ -1,5 +1,7 @@
 package io.github.xiaoancute.englisheasy.data.learning
 
+import io.github.xiaoancute.englisheasy.data.util.WordNormalizer
+
 sealed interface TodayStudyTask {
     data class Review(val dueReviewCount: Int) : TodayStudyTask
     data class NewWord(val word: String, val remainingCount: Int) : TodayStudyTask
@@ -15,10 +17,10 @@ object LearningPlanner {
     ): List<String> {
         if (limit <= 0) return emptyList()
 
-        val blocked = blockedWords.map { normalizeWord(it) }.toSet()
+        val blocked = blockedWords.map(WordNormalizer::normalize).toSet()
         val seen = mutableSetOf<String>()
         return words.asSequence()
-            .map(::normalizeWord)
+            .map(WordNormalizer::normalize)
             .filter { it.isNotBlank() }
             .filter { it !in blocked }
             .filter { seen.add(it) }
@@ -54,16 +56,9 @@ object LearningPlanner {
     private fun normalizeWords(words: List<String>): List<String> {
         val seen = mutableSetOf<String>()
         return words.asSequence()
-            .map(::normalizeWord)
+            .map(WordNormalizer::normalize)
             .filter { it.isNotBlank() }
             .filter { seen.add(it) }
             .toList()
-    }
-
-    private fun normalizeWord(word: String): String {
-        return word
-            .trim()
-            .lowercase()
-            .replace(Regex("\\s+"), " ")
     }
 }

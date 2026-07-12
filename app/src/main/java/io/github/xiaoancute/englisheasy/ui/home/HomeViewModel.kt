@@ -11,10 +11,12 @@ import io.github.xiaoancute.englisheasy.data.model.ExpressionRescueCard
 import io.github.xiaoancute.englisheasy.data.model.SentenceCard
 import io.github.xiaoancute.englisheasy.data.settings.SettingsRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -56,10 +58,13 @@ class HomeViewModel @Inject constructor(
 
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Idle)
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
+    private var requestJob: Job? = null
     private var favoriteJob: Job? = null
     private var noteJob: Job? = null
     private var exampleJob: Job? = null
     private var sourceSentenceJob: Job? = null
+    private var noteSaveJob: Job? = null
+    private var exampleSaveJob: Job? = null
 
     /** 是否已配置可用的 Provider；初始乐观为 true，避免已配置用户看到引导闪烁。 */
     val isConfigured: StateFlow<Boolean> = settings.configFlow
@@ -76,11 +81,9 @@ class HomeViewModel @Inject constructor(
         val trimmedContext = contextSentence.trim()
         if (trimmed.isEmpty()) return
         _state.value = HomeUiState.Loading
-        favoriteJob?.cancel()
-        noteJob?.cancel()
-        exampleJob?.cancel()
-        sourceSentenceJob?.cancel()
-        viewModelScope.launch {
+        cancelObservationJobs()
+        requestJob?.cancel()
+        requestJob = viewModelScope.launch {
             repo.lookup(
                 word = trimmed,
                 contextSentence = trimmedContext,
@@ -125,11 +128,9 @@ class HomeViewModel @Inject constructor(
         val trimmed = sentence.trim()
         if (trimmed.isEmpty()) return
         _state.value = HomeUiState.Loading
-        favoriteJob?.cancel()
-        noteJob?.cancel()
-        exampleJob?.cancel()
-        sourceSentenceJob?.cancel()
-        viewModelScope.launch {
+        cancelObservationJobs()
+        requestJob?.cancel()
+        requestJob = viewModelScope.launch {
             repo.analyzeSentence(trimmed).fold(
                 onSuccess = { card ->
                     _state.value = HomeUiState.SentenceSuccess(card)
@@ -143,11 +144,9 @@ class HomeViewModel @Inject constructor(
         val trimmed = intent.trim()
         if (trimmed.isEmpty()) return
         _state.value = HomeUiState.Loading
-        favoriteJob?.cancel()
-        noteJob?.cancel()
-        exampleJob?.cancel()
-        sourceSentenceJob?.cancel()
-        viewModelScope.launch {
+        cancelObservationJobs()
+        requestJob?.cancel()
+        requestJob = viewModelScope.launch {
             repo.rescueExpression(trimmed).fold(
                 onSuccess = { card ->
                     _state.value = HomeUiState.ExpressionSuccess(card)
@@ -168,8 +167,12 @@ class HomeViewModel @Inject constructor(
     fun setNote(note: String) {
         val current = _state.value as? HomeUiState.Success ?: return
         _state.value = current.copy(userNote = note)
-        viewModelScope.launch {
-            repo.setNote(current.card.word, note)
+        noteSaveJob?.cancel()
+        noteSaveJob = viewModelScope.launch {
+            delay(NOTE_SAVE_DEBOUNCE_MS)
+            val latest = _state.value as? HomeUiState.Success ?: return@launch
+            if (!latest.card.word.equals(current.card.word, ignoreCase = true)) return@launch
+            repo.setNote(latest.card.word, latest.userNote)
         }
     }
 
@@ -179,8 +182,12 @@ class HomeViewModel @Inject constructor(
             userExample = example,
             exampleFeedbackState = ExampleFeedbackUiState.Idle,
         )
-        viewModelScope.launch {
-            repo.setExample(current.card.word, example)
+        exampleSaveJob?.cancel()
+        exampleSaveJob = viewModelScope.launch {
+            delay(NOTE_SAVE_DEBOUNCE_MS)
+            val latest = _state.value as? HomeUiState.Success ?: return@launch
+            if (!latest.card.word.equals(current.card.word, ignoreCase = true)) return@launch
+            repo.setExample(latest.card.word, latest.userExample)
         }
     }
 
@@ -195,7 +202,10 @@ class HomeViewModel @Inject constructor(
         }
 
         _state.value = current.copy(exampleFeedbackState = ExampleFeedbackUiState.Loading)
-        viewModelScope.launch {
+        requestJob?.cancel()
+        requestJob = viewModelScope.launch {
+            // 立刻落库，避免 debounce 未完成时检查用到旧例句
+            repo.setExample(current.card.word, example)
             repo.reviewExample(
                 word = current.card.word,
                 userExample = example,
@@ -224,11 +234,20 @@ class HomeViewModel @Inject constructor(
     }
 
     fun reset() {
+        requestJob?.cancel()
+        cancelObservationJobs()
+        noteSaveJob?.cancel()
+        exampleSaveJob?.cancel()
+        _state.value = HomeUiState.Idle
+    }
+
+    private fun cancelObservationJobs() {
         favoriteJob?.cancel()
         noteJob?.cancel()
         exampleJob?.cancel()
         sourceSentenceJob?.cancel()
-        _state.value = HomeUiState.Idle
+        noteSaveJob?.cancel()
+        exampleSaveJob?.cancel()
     }
 
     private fun observeFavorite(word: String) {
@@ -246,11 +265,15 @@ class HomeViewModel @Inject constructor(
     private fun observeNote(word: String) {
         noteJob?.cancel()
         noteJob = viewModelScope.launch {
-            repo.observeNote(word).collect { userNote ->
-                val current = _state.value as? HomeUiState.Success
-                if (current != null && current.card.word.equals(word, ignoreCase = true)) {
-                    _state.value = current.copy(userNote = userNote)
-                }
+            // 只同步首帧；若用户已开始输入则不覆盖
+            val userNote = repo.observeNote(word).firstOrNull().orEmpty()
+            val current = _state.value as? HomeUiState.Success
+            if (
+                current != null &&
+                current.card.word.equals(word, ignoreCase = true) &&
+                current.userNote.isEmpty()
+            ) {
+                _state.value = current.copy(userNote = userNote)
             }
         }
     }
@@ -258,11 +281,14 @@ class HomeViewModel @Inject constructor(
     private fun observeExample(word: String) {
         exampleJob?.cancel()
         exampleJob = viewModelScope.launch {
-            repo.observeExample(word).collect { userExample ->
-                val current = _state.value as? HomeUiState.Success
-                if (current != null && current.card.word.equals(word, ignoreCase = true)) {
-                    _state.value = current.copy(userExample = userExample)
-                }
+            val userExample = repo.observeExample(word).firstOrNull().orEmpty()
+            val current = _state.value as? HomeUiState.Success
+            if (
+                current != null &&
+                current.card.word.equals(word, ignoreCase = true) &&
+                current.userExample.isEmpty()
+            ) {
+                _state.value = current.copy(userExample = userExample)
             }
         }
     }
@@ -270,12 +296,20 @@ class HomeViewModel @Inject constructor(
     private fun observeSourceSentence(word: String) {
         sourceSentenceJob?.cancel()
         sourceSentenceJob = viewModelScope.launch {
-            repo.observeSourceSentence(word).collect { sourceSentence ->
-                val current = _state.value as? HomeUiState.Success
-                if (current != null && current.card.word.equals(word, ignoreCase = true)) {
-                    _state.value = current.copy(contextSentence = sourceSentence)
-                }
+            val sourceSentence = repo.observeSourceSentence(word).firstOrNull().orEmpty()
+            val current = _state.value as? HomeUiState.Success
+            if (
+                current != null &&
+                current.card.word.equals(word, ignoreCase = true) &&
+                current.contextSentence.isEmpty() &&
+                sourceSentence.isNotEmpty()
+            ) {
+                _state.value = current.copy(contextSentence = sourceSentence)
             }
         }
+    }
+
+    private companion object {
+        const val NOTE_SAVE_DEBOUNCE_MS = 400L
     }
 }

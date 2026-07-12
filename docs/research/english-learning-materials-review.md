@@ -17,7 +17,7 @@
 | [`byoungd/English-level-up-tips`](https://github.com/byoungd/English-level-up-tips) | GitHub 指南 | 中文学习者视角很强，覆盖词汇、听力、阅读、口语、写作和 AI 学习。 | 只做方法论参考。该指南声明 CC BY-NC 风格条款，不直接导入正文、图片或词表。 |
 | [`Gianguyen1234/open-english-vn`](https://github.com/Gianguyen1234/open-english-vn) | GitHub 资源目录 | 展示了一个可维护的资源目录结构：等级、技能、主题、贡献模板、移动端目录。 | MIT 项目结构可参考；具体资源仍只做外链，不打包进 app。 |
 | [`jcrodriguezu/english_learning_resources`](https://github.com/jcrodriguezu/english_learning_resources) | GitHub/社区资源表 | 来自开发者 Slack 社区的小型资源汇总，常见分类包括听力、交流、发音、应用、书籍。 | 只做资源分类参考，不作为内置内容来源。 |
-| [`参考.md`](../../参考.md) | 用户提供的本地视频文稿 | 与 English Easy 高度一致：反对长期依赖中文中转，强调英文直接映射概念、画面和场景。 | 用户提供参考。可以总结思想；不在项目文档中发布全文，除非后续明确来源权限。 |
+| [`参考.md`](../参考.md) | 用户提供的本地视频文稿 | 与 English Easy 高度一致：反对长期依赖中文中转，强调英文直接映射概念、画面和场景。 | 用户提供参考。可以总结思想；不在项目文档中发布全文，除非后续明确来源权限。 |
 | [Antimoon: A guide to learning English really well](https://www.antimoon.com/how/howtolearn.htm) | 社区方法文章 | 强调动机、词典、正确输入、发音、大量句子和 SRS。 | 方法论参考，不导入内容。 |
 | [Antimoon: Dictionary](https://www.antimoon.com/how/dict.htm) | 社区方法文章 | 推荐英英词典、发音和例句；认为例句对输出能力比定义更关键。 | 支持 English Easy 强化例句和语境，而不是增加中文释义。 |
 | [Antimoon: Get input. Lots of it.](https://www.antimoon.com/how/input.htm) | 社区方法文章 | 把 input 定义为读到/听到的英文句子，并强调输入能支持后续造句。 | 支持把概念卡连接到真实句子和输出。 |

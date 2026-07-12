@@ -3,6 +3,7 @@ package io.github.xiaoancute.englisheasy.data.local
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import io.github.xiaoancute.englisheasy.data.model.ConceptCard
+import io.github.xiaoancute.englisheasy.data.util.WordNormalizer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -52,7 +53,7 @@ data class ConceptCardEntity(
         ): ConceptCardEntity {
             val now = System.currentTimeMillis()
             return ConceptCardEntity(
-                word = card.word.lowercase().trim().replace(Regex("""\s+"""), " "),
+                word = WordNormalizer.normalize(card.word),
                 promptVersion = card.promptVersion,
                 cardJson = json.encodeToString(card),
                 queriedAt = now,

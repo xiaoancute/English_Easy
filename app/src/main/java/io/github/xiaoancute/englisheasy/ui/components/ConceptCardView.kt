@@ -31,11 +31,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -363,8 +368,27 @@ private fun SingleCardBody(
     }
 
     card.misconceptions?.takeIf { it.isNotEmpty() }?.let { miscons ->
+        // 默认折叠，避免先植入错误印象；看完核心概念后再展开
+        var expanded by remember(card.word) { mutableStateOf(false) }
         Section(title = "错误直觉 · 过渡拐杖") {
-            miscons.forEach { mc -> MisconceptionItem(mc) }
+            if (expanded) {
+                miscons.forEach { mc -> MisconceptionItem(mc) }
+                TextButton(onClick = { expanded = false }) {
+                    Text("收起")
+                }
+            } else {
+                SurfaceCard(
+                    tone = SurfaceTone.Tonal,
+                    contentPadding = 14.dp,
+                    modifier = Modifier.clickable { expanded = true },
+                ) {
+                    Text(
+                        text = "点击展开（建议先看完核心概念与场景）",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }
