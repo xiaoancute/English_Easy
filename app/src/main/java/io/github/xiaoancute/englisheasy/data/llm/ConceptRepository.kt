@@ -75,10 +75,14 @@ class ConceptRepository @Inject constructor(
         // 2. 缓存未命中、强制刷新、或带上下文 → 调用 LLM
         val cfg = settings.load()
         require(cfg.isUsable) { "请先在设置里填入 API Key、Base URL、模型名" }
+        // 强制主键与 prompt 版本：LLM 常改写 word / 乱填 promptVersion，不能信
         val card = lookupWithJsonRetry(
             word = normalized,
             contextSentence = normalizedContext,
             cfg = cfg,
+        ).copy(
+            word = normalized,
+            promptVersion = CURRENT_PROMPT_VERSION,
         )
 
         // 3. 带上下文且已有通用卡：保留通用 cardJson，只更新来源句子等元数据
@@ -86,7 +90,10 @@ class ConceptRepository @Inject constructor(
             !forceRefresh &&
             hasFreshGeneralCache
         val cardToStore = if (preserveGeneralCard) {
-            cached!!.toCard(json)
+            cached!!.toCard(json).copy(
+                word = normalized,
+                promptVersion = CURRENT_PROMPT_VERSION,
+            )
         } else {
             card
         }
@@ -114,7 +121,9 @@ class ConceptRepository @Inject constructor(
     suspend fun setFavorite(word: String, isFavorite: Boolean) {
         val normalized = WordNormalizer.normalize(word)
         require(normalized.isNotEmpty()) { "词或短语不能为空" }
-        dao.setFavorite(normalized, isFavorite)
+        val updated = dao.setFavorite(normalized, isFavorite)
+        // UPDATE 0 行时 UI 会假成功：没有缓存行就无法收藏
+        require(updated > 0) { "还没有这张概念卡，请先查询成功后再收藏" }
     }
 
     suspend fun setNote(word: String, note: String) {

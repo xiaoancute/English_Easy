@@ -24,22 +24,26 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -133,8 +137,12 @@ fun HomeScreen(
         val word = pendingStudyLookupWord ?: return@LaunchedEffect
         when (val currentState = state) {
             is HomeUiState.Success -> {
-                snackbarHostState.showSnackbar("已加入学习中：${currentState.card.word}")
-                pendingStudyLookupWord = null
+                // 必须是这次学习任务对应的词，避免旧 Success 误弹「已加入」
+                val matched = currentState.card.word.equals(word, ignoreCase = true)
+                if (matched) {
+                    snackbarHostState.showSnackbar("已加入学习中：${currentState.card.word}")
+                    pendingStudyLookupWord = null
+                }
             }
             is HomeUiState.SentenceSuccess -> Unit
             is HomeUiState.ExpressionSuccess -> Unit
@@ -144,6 +152,19 @@ fun HomeScreen(
             }
             HomeUiState.Idle, HomeUiState.Loading -> Unit
         }
+    }
+
+    fun clearToIdle() {
+        input = ""
+        contextSentence = ""
+        viewModel.reset()
+    }
+
+    fun changeMode(mode: LookupMode) {
+        lookupMode = mode
+        input = ""
+        contextSentence = ""
+        viewModel.reset()
     }
 
     Scaffold(
@@ -182,17 +203,13 @@ fun HomeScreen(
                 ),
             verticalArrangement = Arrangement.spacedBy(EnglishEasySpacing.SectionGap),
         ) {
-            val showFullLookup = state == HomeUiState.Idle
+            // Idle / Error 用完整面板（可切换模式）；有结果时用紧凑栏 + 清除
+            val showFullLookup = state is HomeUiState.Idle || state is HomeUiState.Error
             if (showFullLookup) {
                 LookupPanel(
                     lookupMode = lookupMode,
                     input = input,
-                    onModeChange = {
-                        lookupMode = it
-                        input = ""
-                        contextSentence = ""
-                        viewModel.reset()
-                    },
+                    onModeChange = ::changeMode,
                     onInputChange = { input = it },
                     onLookup = { performLookup() },
                 )
@@ -200,11 +217,10 @@ fun HomeScreen(
                 ResultSearchBar(
                     lookupMode = lookupMode,
                     input = input,
-                    onInputChange = {
-                        input = it
-                        contextSentence = ""
-                    },
+                    onInputChange = { input = it },
                     onLookup = { performLookup() },
+                    onClear = ::clearToIdle,
+                    onModeChange = ::changeMode,
                 )
             }
 
@@ -254,27 +270,48 @@ private fun ResultSearchBar(
     input: String,
     onInputChange: (String) -> Unit,
     onLookup: () -> Unit,
+    onClear: () -> Unit,
+    onModeChange: (LookupMode) -> Unit,
 ) {
+    var modeMenuExpanded by remember { mutableStateOf(false) }
     SurfaceCard(tone = SurfaceTone.Plain, contentPadding = 8.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                modifier = Modifier.width(62.dp),
-                shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ) {
-                Box(
-                    modifier = Modifier.height(52.dp).fillMaxWidth(),
-                    contentAlignment = Alignment.Center,
+            Box {
+                Surface(
+                    onClick = { modeMenuExpanded = true },
+                    modifier = Modifier.width(62.dp),
+                    shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
-                    Text(
-                        text = lookupMode.shortLabel,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                    Box(
+                        modifier = Modifier.height(52.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = lookupMode.shortLabel,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            letterSpacing = 0.sp,
+                        )
+                    }
+                }
+                DropdownMenu(
+                    expanded = modeMenuExpanded,
+                    onDismissRequest = { modeMenuExpanded = false },
+                ) {
+                    LookupMode.entries.forEach { mode ->
+                        DropdownMenuItem(
+                            text = { Text(mode.shortLabel) },
+                            onClick = {
+                                modeMenuExpanded = false
+                                if (mode != lookupMode) onModeChange(mode)
+                            },
+                        )
+                    }
                 }
             }
             OutlinedTextField(
@@ -299,12 +336,24 @@ private fun ResultSearchBar(
                 ),
                 keyboardActions = KeyboardActions(onSearch = { onLookup() }),
             )
+            IconButton(onClick = onClear) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "清除结果，返回首页",
+                )
+            }
             Button(
                 onClick = onLookup,
                 modifier = Modifier.height(52.dp),
                 shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
             ) {
-                Text("查")
+                Text(
+                    when (lookupMode) {
+                        LookupMode.Word -> "查"
+                        LookupMode.Sentence -> "拆"
+                        LookupMode.Expression -> "说"
+                    },
+                )
             }
         }
     }

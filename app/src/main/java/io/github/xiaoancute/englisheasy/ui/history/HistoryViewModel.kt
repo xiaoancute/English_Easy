@@ -35,13 +35,19 @@ class HistoryViewModel @Inject constructor(
 
     fun setFavorite(word: String, isFavorite: Boolean) {
         viewModelScope.launch {
-            dao.setFavorite(word, isFavorite)
+            val normalized = word.trim().lowercase().replace(Regex("""\s+"""), " ")
+            if (normalized.isNotEmpty()) {
+                dao.setFavorite(normalized, isFavorite)
+            }
         }
     }
 
     fun delete(word: String) {
         viewModelScope.launch {
-            dao.delete(word)
+            val normalized = word.trim().lowercase().replace(Regex("""\s+"""), " ")
+            if (normalized.isNotEmpty()) {
+                dao.delete(normalized)
+            }
         }
     }
 

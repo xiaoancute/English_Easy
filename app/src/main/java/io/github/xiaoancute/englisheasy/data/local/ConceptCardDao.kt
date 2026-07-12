@@ -48,7 +48,7 @@ interface ConceptCardDao {
     fun observeSourceSentence(word: String): Flow<String?>
 
     @Query("UPDATE concept_cards SET isFavorite = :isFavorite WHERE word = :word")
-    suspend fun setFavorite(word: String, isFavorite: Boolean)
+    suspend fun setFavorite(word: String, isFavorite: Boolean): Int
 
     @Query("UPDATE concept_cards SET userNote = :note WHERE word = :word")
     suspend fun setNote(word: String, note: String)

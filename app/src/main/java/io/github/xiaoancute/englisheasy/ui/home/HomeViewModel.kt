@@ -158,9 +158,16 @@ class HomeViewModel @Inject constructor(
 
     fun setFavorite(isFavorite: Boolean) {
         val current = _state.value as? HomeUiState.Success ?: return
+        // 乐观更新；若库中尚无行（异常路径），repository 会尽量保证可写
         _state.value = current.copy(isFavorite = isFavorite)
         viewModelScope.launch {
-            repo.setFavorite(current.card.word, isFavorite)
+            runCatching { repo.setFavorite(current.card.word, isFavorite) }
+                .onFailure {
+                    val latest = _state.value as? HomeUiState.Success ?: return@onFailure
+                    if (latest.card.word.equals(current.card.word, ignoreCase = true)) {
+                        _state.value = latest.copy(isFavorite = !isFavorite)
+                    }
+                }
         }
     }
 
