@@ -321,7 +321,7 @@ private fun ResultSearchBar(
                 Surface(
                     onClick = { modeMenuExpanded = true },
                     modifier = Modifier
-                        .widthIn(min = 62.dp)
+                        .width(64.dp)
                         .heightIn(min = 56.dp),
                     shape = RoundedCornerShape(EnglishEasySpacing.PillRadius),
                     color = MaterialTheme.colorScheme.secondaryContainer,

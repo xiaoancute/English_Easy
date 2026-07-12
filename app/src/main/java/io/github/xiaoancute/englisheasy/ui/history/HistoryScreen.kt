@@ -244,8 +244,9 @@ private fun EmptyState(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = EnglishEasySpacing.PageHorizontal),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = EnglishEasySpacing.PageHorizontal)
+            .padding(top = 48.dp),
+        contentAlignment = Alignment.TopCenter,
     ) {
         EmptyHero(
             icon = icon,
